@@ -10,10 +10,10 @@ import type {
   ProcessResult,
   GanttSegment,
   SchedulingResult,
-  AggregateMetrics,
   AlgorithmType,
   PriorityDirection,
 } from './types';
+
 import { computeMetrics } from './metrics';
 
 // ----------------------------------------------------------
@@ -401,12 +401,286 @@ export function roundRobin(
 }
 
 // ----------------------------------------------------------
+// Multi-Level Feedback Queue (MLFQ)
+// ----------------------------------------------------------
+// 3 Priority Queues:
+// Q0: Highest priority, RR with Quantum q0 (default 2)
+// Q1: Medium priority, RR with Quantum q1 (default 4)
+// Q2: Lowest priority, FCFS (no time quantum)
+// Rule: Processes that exhaust quantum in Q_i are demoted to Q_{i+1}.
+// Rule: Periodic boost every boostInterval time units resets all to Q0.
+// ----------------------------------------------------------
+export function mlfq(
+  processes: ProcessConfig[],
+  config: { q0Quantum?: number; q1Quantum?: number; boostInterval?: number } = {}
+): SchedulingResult {
+  if (processes.length === 0) return emptyResult();
+
+  const q0Quantum = config.q0Quantum ?? 2;
+  const q1Quantum = config.q1Quantum ?? 4;
+  const boostInterval = config.boostInterval ?? 20;
+
+  interface MLFQEntry extends ProcessEntry {
+    queueLevel: 0 | 1 | 2;
+    quantumUsedInLevel: number;
+  }
+
+  const entries: MLFQEntry[] = processes.map((p) => ({
+    pid: p.pid,
+    arrival: p.arrivalTime,
+    burst: p.burstTime,
+    priority: p.priority,
+    remaining: p.burstTime,
+    firstStart: -1,
+    completion: -1,
+    started: false,
+    queueLevel: 0,
+    quantumUsedInLevel: 0,
+  }));
+
+  const gantt: GanttSegment[] = [];
+  let currentTime = 0;
+  let completed = 0;
+  const n = entries.length;
+
+  const q0: MLFQEntry[] = [];
+  const q1: MLFQEntry[] = [];
+  const q2: MLFQEntry[] = [];
+
+  let currentProcess: MLFQEntry | null = null;
+  let segmentStart = 0;
+
+  // Helper to enqueue based on process queueLevel
+  const enqueue = (proc: MLFQEntry) => {
+    if (proc.queueLevel === 0) q0.push(proc);
+    else if (proc.queueLevel === 1) q1.push(proc);
+    else q2.push(proc);
+  };
+
+  while (completed < n) {
+    // 1. Periodic Priority Boost
+    if (currentTime > 0 && currentTime % boostInterval === 0) {
+      // Boost all unfinished ready processes to Q0
+      while (q1.length > 0) {
+        const p = q1.shift()!;
+        p.queueLevel = 0;
+        p.quantumUsedInLevel = 0;
+        q0.push(p);
+      }
+      while (q2.length > 0) {
+        const p = q2.shift()!;
+        p.queueLevel = 0;
+        p.quantumUsedInLevel = 0;
+        q0.push(p);
+      }
+      // Also boost running process if any
+      if (currentProcess && currentProcess.queueLevel > 0) {
+        currentProcess.queueLevel = 0;
+        currentProcess.quantumUsedInLevel = 0;
+      }
+    }
+
+    // 2. Arrivals at currentTime
+    const newArrivals = entries.filter(
+      (e) => e.arrival === currentTime && !e.started && e.completion === -1
+    );
+    for (const arr of newArrivals) {
+      arr.queueLevel = 0;
+      arr.quantumUsedInLevel = 0;
+      q0.push(arr);
+    }
+
+    // 3. Check preemption: if currently running from Q1 or Q2, and Q0 has jobs, preempt!
+    if (currentProcess) {
+      const needsPreemption =
+        (currentProcess.queueLevel === 1 && q0.length > 0) ||
+        (currentProcess.queueLevel === 2 && (q0.length > 0 || q1.length > 0));
+
+      if (needsPreemption) {
+        gantt.push({ pid: currentProcess.pid, start: segmentStart, end: currentTime });
+        enqueue(currentProcess);
+        currentProcess = null;
+      }
+    }
+
+    // 4. Select process if CPU is idle
+    if (!currentProcess) {
+      if (q0.length > 0) {
+        currentProcess = q0.shift()!;
+      } else if (q1.length > 0) {
+        currentProcess = q1.shift()!;
+      } else if (q2.length > 0) {
+        currentProcess = q2.shift()!;
+      }
+
+      if (currentProcess) {
+        segmentStart = currentTime;
+        if (!currentProcess.started) {
+          currentProcess.firstStart = currentTime;
+          currentProcess.started = true;
+        }
+      } else {
+        // CPU Idle gap
+        const nextArrival = Math.min(
+          ...entries.filter((e) => e.completion === -1).map((e) => e.arrival)
+        );
+        gantt.push({ pid: null, start: currentTime, end: nextArrival });
+        currentTime = nextArrival;
+        continue;
+      }
+    }
+
+    // 5. Execute for 1 time unit
+    currentProcess.remaining--;
+    currentProcess.quantumUsedInLevel++;
+    currentTime++;
+
+    // 6. Check process completion
+    if (currentProcess.remaining === 0) {
+      currentProcess.completion = currentTime;
+      completed++;
+      gantt.push({ pid: currentProcess.pid, start: segmentStart, end: currentTime });
+      currentProcess = null;
+    } else {
+      // Check quantum expiration in Q0 or Q1
+      if (currentProcess.queueLevel === 0 && currentProcess.quantumUsedInLevel >= q0Quantum) {
+        // Demote to Q1
+        gantt.push({ pid: currentProcess.pid, start: segmentStart, end: currentTime });
+        currentProcess.queueLevel = 1;
+        currentProcess.quantumUsedInLevel = 0;
+        q1.push(currentProcess);
+        currentProcess = null;
+      } else if (currentProcess.queueLevel === 1 && currentProcess.quantumUsedInLevel >= q1Quantum) {
+        // Demote to Q2
+        gantt.push({ pid: currentProcess.pid, start: segmentStart, end: currentTime });
+        currentProcess.queueLevel = 2;
+        currentProcess.quantumUsedInLevel = 0;
+        q2.push(currentProcess);
+        currentProcess = null;
+      }
+    }
+  }
+
+  const mergedGantt = mergeGantt(gantt);
+  const results = entriesToResults(entries);
+  const totalTime = currentTime;
+  const metrics = computeMetrics(results, mergedGantt, totalTime);
+
+  return { gantt: mergedGantt, processResults: results, totalTime, metrics };
+}
+
+// ----------------------------------------------------------
+// Priority Scheduling with Aging
+// ----------------------------------------------------------
+// Prevents starvation by gradually elevating the priority of processes
+// that spend extended periods waiting in the ready queue.
+// agingInterval: Every K time units of waiting, priority increments by 1.
+// ----------------------------------------------------------
+export function priorityWithAging(
+  processes: ProcessConfig[],
+  direction: PriorityDirection = 'lower',
+  agingInterval: number = 3
+): SchedulingResult {
+  if (processes.length === 0) return emptyResult();
+  if (agingInterval <= 0) agingInterval = 1;
+
+  interface AgingEntry extends ProcessEntry {
+    effectivePriority: number;
+    waitInQueue: number;
+  }
+
+  const entries: AgingEntry[] = processes.map((p) => ({
+    pid: p.pid,
+    arrival: p.arrivalTime,
+    burst: p.burstTime,
+    priority: p.priority,
+    effectivePriority: p.priority,
+    remaining: p.burstTime,
+    firstStart: -1,
+    completion: -1,
+    started: false,
+    waitInQueue: 0,
+  }));
+
+  const gantt: GanttSegment[] = [];
+  let currentTime = 0;
+  let completed = 0;
+  const n = entries.length;
+
+  while (completed < n) {
+    // Processes that have arrived and not completed
+    const available = entries.filter(
+      (e) => e.arrival <= currentTime && e.completion === -1
+    );
+
+    if (available.length === 0) {
+      const nextArrival = Math.min(
+        ...entries.filter((e) => e.completion === -1).map((e) => e.arrival)
+      );
+      gantt.push({ pid: null, start: currentTime, end: nextArrival });
+      currentTime = nextArrival;
+      continue;
+    }
+
+    // Sort by effective priority
+    available.sort((a, b) => {
+      const pCmp =
+        direction === 'lower'
+          ? a.effectivePriority - b.effectivePriority
+          : b.effectivePriority - a.effectivePriority;
+      return pCmp !== 0 ? pCmp : a.pid.localeCompare(b.pid);
+    });
+
+    const selected = available[0];
+    const start = currentTime;
+    const end = start + selected.burst;
+
+    selected.firstStart = start;
+    selected.completion = end;
+    selected.started = true;
+
+    gantt.push({ pid: selected.pid, start, end });
+
+    // While selected runs for selected.burst units, other available processes age
+    const burstSpan = selected.burst;
+    for (const other of available) {
+      if (other.pid !== selected.pid) {
+        other.waitInQueue += burstSpan;
+        const agingLevels = Math.floor(other.waitInQueue / agingInterval);
+        if (agingLevels > 0) {
+          other.waitInQueue = other.waitInQueue % agingInterval;
+          if (direction === 'lower') {
+            other.effectivePriority = Math.max(1, other.effectivePriority - agingLevels);
+          } else {
+            other.effectivePriority = other.effectivePriority + agingLevels;
+          }
+        }
+      }
+    }
+
+    currentTime = end;
+    completed++;
+  }
+
+  const results = entriesToResults(entries);
+  const totalTime = currentTime;
+  const metrics = computeMetrics(results, gantt, totalTime);
+
+  return { gantt, processResults: results, totalTime, metrics };
+}
+
+// ----------------------------------------------------------
 // Dispatcher — run any algorithm by type
 // ----------------------------------------------------------
 export function runSchedulingAlgorithm(
   algorithm: AlgorithmType,
   processes: ProcessConfig[],
-  options?: { quantum?: number; priorityDirection?: PriorityDirection }
+  options?: {
+    quantum?: number;
+    priorityDirection?: PriorityDirection;
+    agingInterval?: number;
+    mlfqConfig?: { q0Quantum?: number; q1Quantum?: number; boostInterval?: number };
+  }
 ): SchedulingResult {
   switch (algorithm) {
     case 'FCFS':
@@ -419,6 +693,14 @@ export function runSchedulingAlgorithm(
       return priorityScheduling(processes, options?.priorityDirection ?? 'lower');
     case 'RR':
       return roundRobin(processes, options?.quantum ?? 2);
+    case 'MLFQ':
+      return mlfq(processes, options?.mlfqConfig ?? { q0Quantum: options?.quantum ?? 2 });
+    case 'PRIORITY_AGING':
+      return priorityWithAging(
+        processes,
+        options?.priorityDirection ?? 'lower',
+        options?.agingInterval ?? 3
+      );
     default:
       throw new Error(`Unknown algorithm: ${algorithm}`);
   }
@@ -466,6 +748,11 @@ function emptyResult(): SchedulingResult {
       avgResponseTime: 0,
       cpuUtilization: 0,
       throughput: 0,
+      contextSwitches: 0,
+      fairnessIndex: 1.0,
+      starvationRisk: 'None',
+      avgQueueLength: 0,
     },
   };
 }
+

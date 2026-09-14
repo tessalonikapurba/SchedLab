@@ -2,26 +2,31 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
+
 import {
   Clock,
   Cpu,
-  BarChart3,
   RotateCcw,
   Sliders,
   Scale,
   Download,
-  Info,
   CheckCircle2,
   HelpCircle,
   ArrowRight,
   TrendingUp,
   Award,
+  Sparkles,
+  Repeat,
+  ShieldAlert,
+  Gauge,
+  Layers,
 } from 'lucide-react';
 import { useSimulationStore } from '@/store/simulation';
 import { useComparisonStore } from '@/store/comparison';
 import { PRESET_SCENARIOS } from '@/lib/constants';
+import { generateRecommendation } from '@/lib/recommendation';
+import type { AlgorithmType } from '@/lib/types';
+
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -30,6 +35,7 @@ export default function ResultsPage() {
     selectedAlgorithm,
     timeQuantum,
     priorityDirection,
+    agingInterval,
     simulationName,
     results,
     setProcesses,
@@ -38,12 +44,12 @@ export default function ResultsPage() {
     initializeSimulation,
   } = useSimulationStore();
 
-  const { setWorkload, setPriorityDirection, setTimeQuantum, runComparison } =
+  const { setWorkload, setPriorityDirection, setTimeQuantum, setAgingInterval: setCompAging, runComparison } =
     useComparisonStore();
 
-  const [activeTab, setActiveTab] = useState<'metrics' | 'formulas' | 'analysis'>('metrics');
+  const [activeTab, setActiveTab] = useState<'recommendation' | 'metrics' | 'formulas' | 'analysis'>('recommendation');
 
-  // If no simulation results exist yet, initialize with the standard preset
+  // If no simulation results exist yet, initialize with standard preset
   useEffect(() => {
     if (!results || processes.length === 0) {
       const defaultPreset = PRESET_SCENARIOS[0];
@@ -60,9 +66,16 @@ export default function ResultsPage() {
       setWorkload(processes);
       setPriorityDirection(priorityDirection);
       setTimeQuantum(timeQuantum);
+      setCompAging(agingInterval);
       runComparison();
       router.push('/compare');
     }
+  };
+
+  const handleApplyRecommendation = (algo: AlgorithmType) => {
+    setAlgorithm(algo);
+    initializeSimulation();
+    router.push('/simulator/live');
   };
 
   const handleExportJSON = () => {
@@ -71,8 +84,9 @@ export default function ResultsPage() {
       simulationName,
       algorithm: selectedAlgorithm,
       parameters: {
-        timeQuantum: selectedAlgorithm === 'RR' ? timeQuantum : undefined,
-        priorityDirection: selectedAlgorithm === 'PRIORITY' ? priorityDirection : undefined,
+        timeQuantum: selectedAlgorithm === 'RR' || selectedAlgorithm === 'MLFQ' ? timeQuantum : undefined,
+        priorityDirection: selectedAlgorithm === 'PRIORITY' || selectedAlgorithm === 'PRIORITY_AGING' ? priorityDirection : undefined,
+        agingInterval: selectedAlgorithm === 'PRIORITY_AGING' ? agingInterval : undefined,
       },
       metrics: results.metrics,
       processes: results.processResults,
@@ -123,6 +137,10 @@ export default function ResultsPage() {
       `Average Response Time,${results.metrics.avgResponseTime.toFixed(2)}`,
       `CPU Utilization,${results.metrics.cpuUtilization.toFixed(1)}%`,
       `Throughput,${results.metrics.throughput.toFixed(3)} processes/unit`,
+      `Context Switches,${results.metrics.contextSwitches}`,
+      `Fairness Index,${results.metrics.fairnessIndex.toFixed(3)}`,
+      `Starvation Risk,${results.metrics.starvationRisk}`,
+      `Average Queue Length,${results.metrics.avgQueueLength.toFixed(2)}`,
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -148,16 +166,7 @@ export default function ResultsPage() {
   }
 
   const { metrics, processResults: procResults, gantt } = results;
-
-  // Contextual educational insights based on the workload
-  const avgBurst =
-    processes.length > 0
-      ? processes.reduce((sum, p) => sum + p.burstTime, 0) / processes.length
-      : 4;
-  const isConvoyRisk =
-    selectedAlgorithm === 'FCFS' &&
-    processes.length > 2 &&
-    processes[0].burstTime > avgBurst * 1.8;
+  const recommendation = generateRecommendation(processes, selectedAlgorithm, metrics);
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-surface text-foreground py-8 px-4 sm:px-6 lg:px-8">
@@ -169,15 +178,17 @@ export default function ResultsPage() {
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent border border-accent/30">
                 {selectedAlgorithm}
                 {selectedAlgorithm === 'RR' && ` (q=${timeQuantum})`}
+                {selectedAlgorithm === 'MLFQ' && ` (q0=${timeQuantum}, q1=${timeQuantum * 2})`}
+                {selectedAlgorithm === 'PRIORITY_AGING' && ` (aging=${agingInterval})`}
                 {selectedAlgorithm === 'PRIORITY' && ` (${priorityDirection} = high)`}
               </span>
-              <span className="text-xs text-muted">Simulation Complete</span>
+              <span className="text-xs text-muted">Simulation Run Completed</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               {simulationName || 'Simulation Results'}
             </h1>
             <p className="text-sm text-muted mt-1">
-              Comprehensive performance metrics, schedule timeline, and educational analysis for {procResults.length} processes.
+              Comprehensive performance metrics, schedule timeline, and intelligent algorithm recommendations.
             </p>
           </div>
 
@@ -205,7 +216,7 @@ export default function ResultsPage() {
               className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent-hover rounded-lg transition-colors shadow-sm"
             >
               <Scale size={14} />
-              Compare All (5)
+              Compare All (7)
             </button>
             <div className="relative group">
               <button
@@ -233,115 +244,166 @@ export default function ResultsPage() {
           </div>
         </div>
 
-        {/* Top Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs"
-          >
-            <div className="flex items-center justify-between text-xs text-muted mb-1">
-              <span>Avg Waiting Time</span>
-              <Clock size={16} className="text-amber-500" />
+        {/* ==================== 8 METRIC CARDS ==================== */}
+        <div>
+          <h2 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">Simulation Performance Metrics</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* 1. Avg Waiting Time */}
+            <div className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted mb-1">
+                <span>Avg Waiting Time</span>
+                <Clock size={16} className="text-amber-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-foreground">
+                {metrics.avgWaitingTime.toFixed(2)}
+                <span className="text-xs font-normal text-muted ml-1">units</span>
+              </div>
+              <p className="text-[11px] text-muted mt-1">Average wait in Ready Queue</p>
             </div>
-            <div className="text-2xl font-bold font-mono text-foreground">
-              {metrics.avgWaitingTime.toFixed(2)}
-              <span className="text-xs font-normal text-muted ml-1">units</span>
-            </div>
-            <p className="text-[11px] text-muted mt-1">Time spent sitting in Ready queue</p>
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs"
-          >
-            <div className="flex items-center justify-between text-xs text-muted mb-1">
-              <span>Avg Turnaround Time</span>
-              <TrendingUp size={16} className="text-blue-500" />
+            {/* 2. Avg Turnaround Time */}
+            <div className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted mb-1">
+                <span>Avg Turnaround Time</span>
+                <TrendingUp size={16} className="text-blue-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-foreground">
+                {metrics.avgTurnaroundTime.toFixed(2)}
+                <span className="text-xs font-normal text-muted ml-1">units</span>
+              </div>
+              <p className="text-[11px] text-muted mt-1">From arrival to completion</p>
             </div>
-            <div className="text-2xl font-bold font-mono text-foreground">
-              {metrics.avgTurnaroundTime.toFixed(2)}
-              <span className="text-xs font-normal text-muted ml-1">units</span>
-            </div>
-            <p className="text-[11px] text-muted mt-1">From arrival to final completion</p>
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs"
-          >
-            <div className="flex items-center justify-between text-xs text-muted mb-1">
-              <span>Avg Response Time</span>
-              <Award size={16} className="text-emerald-500" />
+            {/* 3. Context Switches */}
+            <div className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted mb-1">
+                <span>Context Switches</span>
+                <Repeat size={16} className="text-purple-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-foreground">
+                {metrics.contextSwitches}
+                <span className="text-xs font-normal text-muted ml-1">switches</span>
+              </div>
+              <p className="text-[11px] text-muted mt-1">CPU process-to-process handoffs</p>
             </div>
-            <div className="text-2xl font-bold font-mono text-foreground">
-              {metrics.avgResponseTime.toFixed(2)}
-              <span className="text-xs font-normal text-muted ml-1">units</span>
-            </div>
-            <p className="text-[11px] text-muted mt-1">From arrival until first CPU burst</p>
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs"
-          >
-            <div className="flex items-center justify-between text-xs text-muted mb-1">
-              <span>CPU Utilization</span>
-              <Cpu size={16} className="text-accent" />
+            {/* 4. Jain's Fairness Index */}
+            <div className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted mb-1">
+                <span>Jain&apos;s Fairness Index</span>
+                <Gauge size={16} className="text-emerald-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-foreground flex items-baseline gap-2">
+                {metrics.fairnessIndex.toFixed(3)}
+                <span
+                  className={`text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded ${
+                    metrics.fairnessIndex >= 0.9
+                      ? 'bg-emerald-500/15 text-emerald-600'
+                      : metrics.fairnessIndex >= 0.75
+                      ? 'bg-amber-500/15 text-amber-600'
+                      : 'bg-red-500/15 text-red-600'
+                  }`}
+                >
+                  {metrics.fairnessIndex >= 0.9 ? 'High' : metrics.fairnessIndex >= 0.75 ? 'Moderate' : 'Unfair'}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted mt-1">1.000 = perfectly balanced service</p>
             </div>
-            <div className="text-2xl font-bold font-mono text-foreground">
-              {metrics.cpuUtilization.toFixed(1)}%
+
+            {/* 5. Avg Response Time */}
+            <div className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted mb-1">
+                <span>Avg Response Time</span>
+                <Award size={16} className="text-teal-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-foreground">
+                {metrics.avgResponseTime.toFixed(2)}
+                <span className="text-xs font-normal text-muted ml-1">units</span>
+              </div>
+              <p className="text-[11px] text-muted mt-1">Arrival to first execution start</p>
             </div>
-            <p className="text-[11px] text-muted mt-1">
-              {metrics.throughput.toFixed(3)} proc/unit • Total: {results.totalTime} units
-            </p>
-          </motion.div>
+
+            {/* 6. CPU Utilization */}
+            <div className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted mb-1">
+                <span>CPU Utilization</span>
+                <Cpu size={16} className="text-accent" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-foreground">
+                {metrics.cpuUtilization.toFixed(1)}%
+              </div>
+              <p className="text-[11px] text-muted mt-1">Non-idle busy time ratio</p>
+            </div>
+
+            {/* 7. Starvation Risk */}
+            <div className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted mb-1">
+                <span>Starvation Risk</span>
+                <ShieldAlert size={16} className="text-red-500" />
+              </div>
+              <div className="text-xl font-bold font-mono text-foreground mt-0.5">
+                <span
+                  className={`inline-block px-2 py-0.5 rounded text-sm font-semibold ${
+                    metrics.starvationRisk === 'None'
+                      ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30'
+                      : metrics.starvationRisk === 'Low'
+                      ? 'bg-blue-500/15 text-blue-600 border border-blue-500/30'
+                      : metrics.starvationRisk === 'Moderate'
+                      ? 'bg-amber-500/15 text-amber-600 border border-amber-500/30'
+                      : 'bg-red-500/15 text-red-600 border border-red-500/30'
+                  }`}
+                >
+                  {metrics.starvationRisk}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted mt-1">Waiting skew & starvation exposure</p>
+            </div>
+
+            {/* 8. Avg Ready Queue Length */}
+            <div className="p-4 rounded-xl bg-surface-alt border border-border shadow-xs">
+              <div className="flex items-center justify-between text-xs text-muted mb-1">
+                <span>Avg Queue Length</span>
+                <Layers size={16} className="text-indigo-500" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-foreground">
+                {metrics.avgQueueLength.toFixed(2)}
+                <span className="text-xs font-normal text-muted ml-1">procs</span>
+              </div>
+              <p className="text-[11px] text-muted mt-1">Little&apos;s Law time-average length</p>
+            </div>
+
+          </div>
         </div>
 
-        {/* Gantt Timeline Summary */}
-        <div className="p-5 rounded-xl bg-surface-alt border border-border space-y-3">
+        {/* Schedule Gantt Chart View */}
+        <div className="p-5 rounded-xl bg-surface-alt border border-border space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <BarChart3 size={16} className="text-accent" />
-              Complete Execution Gantt Chart
-            </h2>
-            <span className="text-xs text-muted font-mono">0 → {results.totalTime} units</span>
+            <h2 className="text-sm font-semibold text-foreground">Schedule Timeline (Gantt Chart)</h2>
+            <span className="text-xs font-mono text-muted">Total Duration: {results.totalTime} units</span>
           </div>
 
-          <div className="overflow-x-auto pb-2">
-            <div className="min-w-[640px]">
-              {/* Blocks */}
-              <div className="flex h-12 w-full rounded-lg overflow-hidden border border-border/80 bg-surface">
+          <div className="overflow-x-auto pb-3">
+            <div className="min-w-[600px]">
+              {/* Gantt Bar */}
+              <div className="flex h-12 w-full rounded-lg overflow-hidden border border-border">
                 {gantt.map((seg, idx) => {
                   const duration = seg.end - seg.start;
                   const pct = (duration / (results.totalTime || 1)) * 100;
-                  const isIdle = seg.pid === 'IDLE';
+                  const isIdle = seg.pid === null;
 
                   return (
                     <div
                       key={idx}
                       style={{ width: `${pct}%` }}
-                      className={`h-full flex flex-col items-center justify-center px-1 text-xs font-mono font-medium transition-all relative group border-r border-background/20 ${
+                      className={`h-full flex flex-col items-center justify-center text-xs font-mono font-bold transition-all relative border-r border-background/20 last:border-0 ${
                         isIdle
-                          ? 'bg-slate-800/80 text-slate-400 italic'
-                          : 'bg-accent/80 text-white hover:bg-accent'
+                          ? 'bg-muted/20 text-muted border-dashed'
+                          : 'text-white'
                       }`}
+                      title={isIdle ? `IDLE (${duration}u)` : `${seg.pid} (${duration}u)`}
                     >
-                      <span className="truncate">{seg.pid}</span>
-                      <span className="text-[10px] opacity-75">{duration}u</span>
-
-                      {/* Tooltip on hover */}
-                      <div className="absolute bottom-full mb-1 hidden group-hover:flex flex-col items-center bg-gray-900 text-white text-[11px] px-2 py-1 rounded shadow-lg whitespace-nowrap z-20 pointer-events-none">
-                        <span>
-                          {seg.pid}: {seg.start} → {seg.end} ({duration} units)
-                        </span>
-                      </div>
+                      <span>{isIdle ? 'IDLE' : seg.pid}</span>
+                      <span className="text-[9px] font-normal opacity-80">{duration}u</span>
                     </div>
                   );
                 })}
@@ -433,24 +495,35 @@ export default function ResultsPage() {
           </div>
         </div>
 
-        {/* Tabbed Educational Section: Analysis & Formulas */}
+        {/* ==================== EDUCATIONAL SECTION & RECOMMENDATION ENGINE ==================== */}
         <div className="p-6 rounded-xl bg-surface-alt border border-border space-y-5">
           <div className="flex border-b border-border gap-4">
+            <button
+              onClick={() => setActiveTab('recommendation')}
+              className={`pb-2.5 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+                activeTab === 'recommendation'
+                  ? 'border-accent text-accent font-bold'
+                  : 'border-transparent text-muted hover:text-foreground'
+              }`}
+            >
+              <Sparkles size={14} />
+              Recommendation Engine
+            </button>
             <button
               onClick={() => setActiveTab('metrics')}
               className={`pb-2.5 text-xs font-medium border-b-2 transition-colors ${
                 activeTab === 'metrics'
-                  ? 'border-accent text-accent'
+                  ? 'border-accent text-accent font-bold'
                   : 'border-transparent text-muted hover:text-foreground'
               }`}
             >
-              Workload-Specific Analysis
+              Workload Behavior Insights
             </button>
             <button
               onClick={() => setActiveTab('formulas')}
               className={`pb-2.5 text-xs font-medium border-b-2 transition-colors ${
                 activeTab === 'formulas'
-                  ? 'border-accent text-accent'
+                  ? 'border-accent text-accent font-bold'
                   : 'border-transparent text-muted hover:text-foreground'
               }`}
             >
@@ -460,7 +533,7 @@ export default function ResultsPage() {
               onClick={() => setActiveTab('analysis')}
               className={`pb-2.5 text-xs font-medium border-b-2 transition-colors ${
                 activeTab === 'analysis'
-                  ? 'border-accent text-accent'
+                  ? 'border-accent text-accent font-bold'
                   : 'border-transparent text-muted hover:text-foreground'
               }`}
             >
@@ -468,162 +541,234 @@ export default function ResultsPage() {
             </button>
           </div>
 
-          {activeTab === 'metrics' && (
-            <div className="space-y-4 text-xs text-muted leading-relaxed">
-              <div className="flex items-start gap-2.5 p-3.5 rounded-lg bg-surface border border-border">
-                <Info size={16} className="text-accent shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-foreground mb-1">Workload Behavior Insight</h4>
-                  <p>
-                    With <strong>{selectedAlgorithm}</strong>, processes completed across a total span of{' '}
-                    <strong className="text-foreground">{results.totalTime} units</strong>. The average process waited{' '}
-                    <strong className="text-foreground">{metrics.avgWaitingTime.toFixed(2)} time units</strong> in the ready queue before or between bursts.
-                  </p>
-                  {isConvoyRisk && (
-                    <p className="mt-2 text-amber-400">
-                      <strong>Convoy Effect Detected:</strong> Process {processes[0].pid} has a burst of{' '}
-                      {processes[0].burstTime} units and arrived first, delaying shorter subsequent processes. Notice how later processes experienced elevated waiting times.
-                    </p>
+          {/* TAB 1: RECOMMENDATION ENGINE */}
+          {activeTab === 'recommendation' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-surface border border-accent/40 shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-accent/15 text-accent">
+                      <Sparkles size={18} />
+                    </span>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-accent tracking-wider">
+                        Educational Recommendation
+                      </span>
+                      <h3 className="text-base font-bold text-foreground">{recommendation.headline}</h3>
+                    </div>
+                  </div>
+
+                  {recommendation.primaryAlgorithm !== selectedAlgorithm ? (
+                    <button
+                      onClick={() => handleApplyRecommendation(recommendation.primaryAlgorithm)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-accent hover:bg-accent-hover rounded-md transition-colors shrink-0"
+                    >
+                      Switch to {recommendation.primaryAlgorithm} & Simulate
+                      <ArrowRight size={13} />
+                    </button>
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20 shrink-0">
+                      <CheckCircle2 size={13} />
+                      Current algorithm is optimal for this goal!
+                    </span>
                   )}
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3.5 rounded-lg bg-surface border border-border space-y-2">
-                  <h5 className="font-semibold text-foreground flex items-center gap-1.5">
-                    <CheckCircle2 size={14} className="text-emerald-400" />
-                    Observed Strengths
-                  </h5>
-                  <ul className="list-disc pl-4 space-y-1">
-                    {selectedAlgorithm === 'FCFS' && (
-                      <>
-                        <li>Simple, deterministic FIFO order with zero scheduling overhead.</li>
-                        <li>Completely starvation-free since every arriving process eventually runs.</li>
-                      </>
-                    )}
-                    {selectedAlgorithm === 'SJF' && (
-                      <>
-                        <li>Achieves minimal total waiting time for non-preemptive workloads.</li>
-                        <li>Shorter jobs finish fast, reducing overall queue buildup.</li>
-                      </>
-                    )}
-                    {selectedAlgorithm === 'SRTF' && (
-                      <>
-                        <li>Preempts long jobs when short jobs arrive, ensuring optimal average turnaround.</li>
-                        <li>Excellent response for interactive bursts.</li>
-                      </>
-                    )}
-                    {selectedAlgorithm === 'RR' && (
-                      <>
-                        <li>Fair distribution of CPU time among all active processes.</li>
-                        <li>Uniform response time bounded by (N - 1) × Quantum.</li>
-                      </>
-                    )}
-                    {selectedAlgorithm === 'PRIORITY' && (
-                      <>
-                        <li>Enforces business/system priority criteria directly.</li>
-                        <li>Urgent tasks receive expedited execution.</li>
-                      </>
-                    )}
-                  </ul>
+                <p className="text-xs text-foreground/90 leading-relaxed">
+                  {recommendation.workloadInsight}
+                </p>
+
+                {/* Suitability Meters */}
+                <div className="grid grid-cols-3 gap-3 pt-2">
+                  <div className="p-2.5 rounded-lg bg-surface-alt border border-border">
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="font-semibold text-muted">Latency / Wait Optimization</span>
+                      <span className="font-mono font-bold text-foreground">{recommendation.suitabilityScore.latency}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${recommendation.suitabilityScore.latency}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-surface-alt border border-border">
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="font-semibold text-muted">Fairness / Anti-Starvation</span>
+                      <span className="font-mono font-bold text-foreground">{recommendation.suitabilityScore.fairness}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${recommendation.suitabilityScore.fairness}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-surface-alt border border-border">
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="font-semibold text-muted">Low Switching Overhead</span>
+                      <span className="font-mono font-bold text-foreground">{recommendation.suitabilityScore.overhead}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                      <div className="h-full bg-purple-500 rounded-full" style={{ width: `${recommendation.suitabilityScore.overhead}%` }} />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="p-3.5 rounded-lg bg-surface border border-border space-y-2">
-                  <h5 className="font-semibold text-foreground flex items-center gap-1.5">
-                    <HelpCircle size={14} className="text-amber-400" />
-                    Trade-offs & Considerations
-                  </h5>
-                  <ul className="list-disc pl-4 space-y-1">
-                    {selectedAlgorithm === 'FCFS' && (
-                      <>
-                        <li>Susceptible to convoy effect if CPU-heavy jobs arrive first.</li>
-                        <li>Average waiting time is often much worse than SJF.</li>
-                      </>
-                    )}
-                    {selectedAlgorithm === 'SJF' && (
-                      <>
-                        <li>Requires prior knowledge or prediction of burst times in real OS kernels.</li>
-                        <li>Risk of starvation for long bursts if short bursts arrive continuously.</li>
-                      </>
-                    )}
-                    {selectedAlgorithm === 'SRTF' && (
-                      <>
-                        <li>Higher context switching overhead due to frequent preemption.</li>
-                        <li>Starvation possible for large processes.</li>
-                      </>
-                    )}
-                    {selectedAlgorithm === 'RR' && (
-                      <>
-                        <li>If quantum is too large, it degenerates into FCFS.</li>
-                        <li>If quantum is too small, context switch overhead dominates.</li>
-                      </>
-                    )}
-                    {selectedAlgorithm === 'PRIORITY' && (
-                      <>
-                        <li>Low priority processes can starve indefinitely without aging mechanisms.</li>
-                        <li>Can lead to priority inversion if synchronized resources are held.</li>
-                      </>
-                    )}
-                  </ul>
+                {/* Reasons and Trade-offs */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-emerald-500" />
+                      Key Reasons to Choose {recommendation.primaryAlgorithmName}
+                    </h4>
+                    <ul className="list-disc pl-4 text-xs text-muted space-y-1">
+                      {recommendation.reasons.map((r, i) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <HelpCircle size={13} className="text-amber-500" />
+                      Critical Trade-offs to Consider
+                    </h4>
+                    <ul className="list-disc pl-4 text-xs text-muted space-y-1">
+                      {recommendation.tradeOffs.map((t, i) => (
+                        <li key={i}>{t}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
+
+                {/* Alternative Options */}
+                {recommendation.alternativeOptions.length > 0 && (
+                  <div className="pt-3 border-t border-border/80">
+                    <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
+                      Alternative Algorithmic Perspectives:
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {recommendation.alternativeOptions.map((alt) => (
+                        <div
+                          key={alt.algorithm}
+                          className="p-2.5 rounded-lg bg-surface-alt border border-border text-xs space-y-1"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-foreground">{alt.name}</span>
+                            <button
+                              onClick={() => handleApplyRecommendation(alt.algorithm)}
+                              className="text-[10px] text-accent hover:underline font-semibold"
+                            >
+                              Simulate
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-emerald-600 font-medium">{alt.pros}</p>
+                          <p className="text-[10px] text-muted">{alt.cons}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
+          {/* TAB 2: WORKLOAD BEHAVIOR INSIGHTS */}
+          {activeTab === 'metrics' && (
+            <div className="space-y-4 text-xs text-muted leading-relaxed">
+              <div className="p-3.5 rounded-lg bg-surface border border-border">
+                <h4 className="font-semibold text-foreground mb-1">Workload Execution Summary</h4>
+                <p>
+                  With <strong>{selectedAlgorithm}</strong>, processes completed across a total span of{' '}
+                  <strong className="text-foreground">{results.totalTime} units</strong>. The CPU experienced{' '}
+                  <strong className="text-foreground">{metrics.contextSwitches} context switches</strong>, while achieving a Jain&apos;s fairness index of{' '}
+                  <strong className="text-foreground">{metrics.fairnessIndex.toFixed(3)}</strong> and an average ready queue length of{' '}
+                  <strong className="text-foreground">{metrics.avgQueueLength.toFixed(2)} processes</strong>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: FORMULAS & PROOFS */}
           {activeTab === 'formulas' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              {/* TAT */}
               <div className="p-4 rounded-lg bg-surface border border-border space-y-2">
                 <h4 className="font-semibold text-foreground">Turnaround Time (TAT)</h4>
                 <div className="p-2.5 rounded bg-surface-alt font-mono text-accent text-sm">
                   TAT = Completion Time − Arrival Time
                 </div>
                 <p className="text-muted">
-                  Measures total elapsed time spent by the process from initial submission until termination.
+                  Total elapsed time spent by the process from initial arrival into the system until final termination.
                 </p>
               </div>
 
+              {/* WT */}
               <div className="p-4 rounded-lg bg-surface border border-border space-y-2">
                 <h4 className="font-semibold text-foreground">Waiting Time (WT)</h4>
-                <div className="p-2.5 rounded bg-surface-alt font-mono text-amber-400 text-sm">
+                <div className="p-2.5 rounded bg-surface-alt font-mono text-amber-500 text-sm">
                   WT = Turnaround Time − Burst Time
                 </div>
                 <p className="text-muted">
-                  Total duration spent sitting inside the Ready Queue waiting to be allocated CPU cycles.
+                  Cumulative duration spent by the process sitting inside the Ready Queue waiting for CPU scheduling.
                 </p>
               </div>
 
+              {/* Jain's Fairness Index */}
               <div className="p-4 rounded-lg bg-surface border border-border space-y-2">
-                <h4 className="font-semibold text-foreground">Response Time (RT)</h4>
-                <div className="p-2.5 rounded bg-surface-alt font-mono text-emerald-400 text-sm">
-                  RT = First CPU Start Time − Arrival Time
+                <h4 className="font-semibold text-foreground">Jain&apos;s Fairness Index (J)</h4>
+                <div className="p-2.5 rounded bg-surface-alt font-mono text-emerald-500 text-xs">
+                  J = (∑ xᵢ)² / (n · ∑ xᵢ²), &nbsp; where xᵢ = Burst / TAT
                 </div>
                 <p className="text-muted">
-                  Time taken from process arrival to the very first moment the CPU executes instructions for it.
+                  Measures whether processes receive a fair share of system resources proportional to their burst sizes. Bounded in [1/n, 1.0]. A value of 1.0 represents perfect egalitarian fairness.
                 </p>
               </div>
 
+              {/* Little's Law / Avg Queue Length */}
+              <div className="p-4 rounded-lg bg-surface border border-border space-y-2">
+                <h4 className="font-semibold text-foreground">Average Ready Queue Length (L_q)</h4>
+                <div className="p-2.5 rounded bg-surface-alt font-mono text-indigo-500 text-sm">
+                  L_q = (∑ Waiting Time) / Schedule Length
+                </div>
+                <p className="text-muted">
+                  Direct application of Little&apos;s Law (L = λW). Gives the continuous time-weighted average number of jobs waiting in the ready queue.
+                </p>
+              </div>
+
+
+              {/* Context Switches */}
+              <div className="p-4 rounded-lg bg-surface border border-border space-y-2">
+                <h4 className="font-semibold text-foreground">Context Switch Cost</h4>
+                <div className="p-2.5 rounded bg-surface-alt font-mono text-purple-500 text-xs">
+                  Switch = Process_B.start where Process_B ≠ Process_A
+                </div>
+                <p className="text-muted">
+                  Every preemption or quantum exhaustion incurs context switching overhead: saving registers to the Process Control Block (PCB), cache line invalidation, and TLB flushes.
+                </p>
+              </div>
+
+              {/* CPU Utilization */}
               <div className="p-4 rounded-lg bg-surface border border-border space-y-2">
                 <h4 className="font-semibold text-foreground">CPU Utilization</h4>
-                <div className="p-2.5 rounded bg-surface-alt font-mono text-blue-400 text-sm">
-                  Utilization = (Total Busy Time / Schedule Length) × 100%
+                <div className="p-2.5 rounded bg-surface-alt font-mono text-blue-500 text-sm">
+                  Utilization = (Busy Time / Total Time) × 100%
                 </div>
                 <p className="text-muted">
-                  Percentage of total schedule duration where the CPU is actively executing user processes.
+                  Ratio of total CPU executing time against idle gaps caused by process arrival delays.
                 </p>
               </div>
             </div>
           )}
 
+          {/* TAB 4: ALGORITHM CHARACTERISTICS */}
           {activeTab === 'analysis' && (
             <div className="space-y-4 text-xs text-muted leading-relaxed">
               <p>
-                In classical operating systems, CPU scheduling is a core subsystem of the kernel dispatcher. The choice of scheduling algorithm involves navigating inherent trade-offs between <strong>responsiveness</strong>, <strong>fairness</strong>, <strong>throughput</strong>, and <strong>turnaround time</strong>.
+                In operating systems, the scheduling dispatcher balances trade-offs between <strong>latency</strong>, <strong>throughput</strong>, and <strong>fairness</strong>. Algorithms with preemption (SRTF, RR, MLFQ) achieve superior responsiveness at the cost of elevated context switching overhead.
               </p>
               <div className="p-4 rounded-lg bg-surface border border-border flex items-center justify-between">
                 <div>
-                  <h4 className="font-semibold text-foreground">Curious how this exact workload performs under other policies?</h4>
+                  <h4 className="font-semibold text-foreground">Benchmark all 7 algorithms on this exact workload</h4>
                   <p className="text-muted mt-0.5">
-                    Benchmark FCFS, SJF, SRTF, Priority, and Round Robin side-by-side with charts.
+                    Compare FCFS, SJF, SRTF, Priority, Round Robin, MLFQ, and Priority with Aging side-by-side.
                   </p>
                 </div>
                 <button
