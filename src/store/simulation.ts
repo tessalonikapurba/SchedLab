@@ -17,6 +17,7 @@ import type {
 } from '@/lib/types';
 import { SimulationEngine } from '@/lib/simulation';
 import { runSchedulingAlgorithm } from '@/lib/scheduling';
+import { recordSimulationRun } from '@/lib/scenarios';
 
 interface SimulationState {
   // Configuration
@@ -25,6 +26,7 @@ interface SimulationState {
   selectedAlgorithm: AlgorithmType;
   timeQuantum: number;
   priorityDirection: PriorityDirection;
+  agingInterval: number;
 
   // Runtime
   simulationStatus: SimulationStatus;
@@ -39,6 +41,7 @@ interface SimulationState {
   simulationSpeed: SimulationSpeed;
   selectedProcess: string | null;
   schedulerDecision: SchedulerDecision | null;
+  mlfqQueues?: { q0: string[]; q1: string[]; q2: string[] };
 
   // Engine
   engine: SimulationEngine | null;
@@ -56,6 +59,7 @@ interface SimulationState {
   setAlgorithm: (algorithm: AlgorithmType) => void;
   setQuantum: (quantum: number) => void;
   setPriorityDirection: (direction: PriorityDirection) => void;
+  setAgingInterval: (interval: number) => void;
 
   // Actions — Simulation Control
   initializeSimulation: () => void;
@@ -77,6 +81,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   selectedAlgorithm: 'FCFS',
   timeQuantum: 2,
   priorityDirection: 'lower',
+  agingInterval: 3,
 
   simulationStatus: 'IDLE',
   currentTime: 0,
@@ -90,6 +95,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   simulationSpeed: 1,
   selectedProcess: null,
   schedulerDecision: null,
+  mlfqQueues: { q0: [], q1: [], q2: [] },
 
   engine: null,
   intervalId: null,
@@ -124,10 +130,12 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   setPriorityDirection: (direction) => set({ priorityDirection: direction }),
 
+  setAgingInterval: (interval) => set({ agingInterval: interval }),
+
   // ---- Simulation Control Actions ----
 
   initializeSimulation: () => {
-    const { processes, selectedAlgorithm, timeQuantum, priorityDirection } = get();
+    const { processes, selectedAlgorithm, timeQuantum, priorityDirection, agingInterval } = get();
 
     // Clean up any running interval
     const { intervalId } = get();
@@ -138,14 +146,15 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       processes,
       selectedAlgorithm,
       timeQuantum,
-      priorityDirection
+      priorityDirection,
+      agingInterval
     );
 
     // Also compute full results upfront for the results page
     const fullResults = runSchedulingAlgorithm(
       selectedAlgorithm,
       processes,
-      { quantum: timeQuantum, priorityDirection }
+      { quantum: timeQuantum, priorityDirection, agingInterval }
     );
 
     // Initialize process states
@@ -171,11 +180,12 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       selectedProcess: null,
       intervalId: null,
       results: fullResults,
+      mlfqQueues: { q0: [], q1: [], q2: [] },
     });
   },
 
   play: () => {
-    const { engine, simulationStatus, simulationSpeed } = get();
+    const { engine, simulationStatus, simulationSpeed, results, simulationName, selectedAlgorithm, processes } = get();
     if (!engine || engine.isCompleted) return;
     if (simulationStatus === 'RUNNING') return;
 
@@ -198,12 +208,28 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         gantt: state.engine.getGantt(),
         events: state.engine.getEvents(),
         schedulerDecision: snapshot.decision ?? state.schedulerDecision,
+        mlfqQueues: snapshot.mlfqQueues,
         simulationStatus: snapshot.completed ? 'COMPLETED' : 'RUNNING',
       });
 
       if (snapshot.completed) {
         if (state.intervalId) clearInterval(state.intervalId);
         set({ intervalId: null });
+
+        // Record in simulation history
+        if (results) {
+          recordSimulationRun({
+            simulationName: simulationName || 'Simulation',
+            algorithm: selectedAlgorithm,
+            processCount: processes.length,
+            totalTime: results.totalTime,
+            avgWaitingTime: results.metrics.avgWaitingTime,
+            avgTurnaroundTime: results.metrics.avgTurnaroundTime,
+            fairnessIndex: results.metrics.fairnessIndex,
+            contextSwitches: results.metrics.contextSwitches,
+            starvationRisk: results.metrics.starvationRisk,
+          });
+        }
       }
     }, 1000 / simulationSpeed);
 
@@ -217,7 +243,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   step: () => {
-    const { engine, intervalId } = get();
+    const { engine, intervalId, results, simulationName, selectedAlgorithm, processes } = get();
     if (!engine || engine.isCompleted) return;
 
     // Pause if playing
@@ -237,8 +263,23 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       gantt: engine.getGantt(),
       events: engine.getEvents(),
       schedulerDecision: snapshot.decision ?? get().schedulerDecision,
+      mlfqQueues: snapshot.mlfqQueues,
       simulationStatus: snapshot.completed ? 'COMPLETED' : 'PAUSED',
     });
+
+    if (snapshot.completed && results) {
+      recordSimulationRun({
+        simulationName: simulationName || 'Simulation',
+        algorithm: selectedAlgorithm,
+        processCount: processes.length,
+        totalTime: results.totalTime,
+        avgWaitingTime: results.metrics.avgWaitingTime,
+        avgTurnaroundTime: results.metrics.avgTurnaroundTime,
+        fairnessIndex: results.metrics.fairnessIndex,
+        contextSwitches: results.metrics.contextSwitches,
+        starvationRisk: results.metrics.starvationRisk,
+      });
+    }
   },
 
   reset: () => {
@@ -260,6 +301,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       selectedProcess: null,
       intervalId: null,
       results: null,
+      mlfqQueues: { q0: [], q1: [], q2: [] },
     });
   },
 
@@ -279,12 +321,13 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   selectProcess: (pid) => set({ selectedProcess: pid }),
 
   computeResults: () => {
-    const { processes, selectedAlgorithm, timeQuantum, priorityDirection } = get();
+    const { processes, selectedAlgorithm, timeQuantum, priorityDirection, agingInterval } = get();
     const results = runSchedulingAlgorithm(
       selectedAlgorithm,
       processes,
-      { quantum: timeQuantum, priorityDirection }
+      { quantum: timeQuantum, priorityDirection, agingInterval }
     );
     set({ results });
   },
 }));
+

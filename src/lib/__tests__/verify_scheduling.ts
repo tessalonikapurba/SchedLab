@@ -4,6 +4,7 @@
 
 import { runSchedulingAlgorithm } from '../scheduling';
 import type { ProcessConfig } from '../types';
+import { generateRecommendation, analyzeWorkload } from '../recommendation';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -165,4 +166,89 @@ console.log('--- Running SchedLab Algorithmic Verifications ---');
   console.log('✓ Test 6: Priority Scheduling Passed');
 }
 
-console.log('ALL 6 ALGORITHMIC TEST SUITES PASSED PERFECTLY!');
+// Test 7: MLFQ Scheduling (Q0=2, Q1=4, Q2=FCFS)
+{
+  const processes: ProcessConfig[] = [
+    { pid: 'P1', arrivalTime: 0, burstTime: 6, priority: 1 },
+    { pid: 'P2', arrivalTime: 0, burstTime: 2, priority: 1 },
+  ];
+
+  const res = runSchedulingAlgorithm('MLFQ', processes, {
+    mlfqConfig: { q0Quantum: 2, q1Quantum: 4, boostInterval: 50 },
+  });
+  // t=0: P1 and P2 enter Q0.
+  // P1 runs t=0..2 (uses 2 units in Q0 -> demoted to Q1).
+  // P2 runs t=2..4 (uses 2 units in Q0 -> completes!).
+  // P1 runs from Q1 t=4..8 (finishes remaining 4 units in Q1).
+  const p2 = res.processResults.find((p) => p.pid === 'P2')!;
+  const p1 = res.processResults.find((p) => p.pid === 'P1')!;
+
+  assert(p2.completionTime === 4, 'MLFQ P2 CT should be 4');
+  assert(p1.completionTime === 8, 'MLFQ P1 CT should be 8');
+  console.log('✓ Test 7: MLFQ Multi-Level Demotion Passed');
+}
+
+// Test 8: Priority with Aging (starvation prevention)
+{
+  const processes: ProcessConfig[] = [
+    { pid: 'P1', arrivalTime: 0, burstTime: 10, priority: 1 }, // High priority long task
+    { pid: 'P2', arrivalTime: 0, burstTime: 2, priority: 5 },  // Low priority short task
+  ];
+
+  // Aging interval = 2. During P1's 10 burst units, P2 waits 10 units -> ages by 5 levels!
+  // P2's effective priority decreases from 5 down to 1.
+  const res = runSchedulingAlgorithm('PRIORITY_AGING', processes, {
+    priorityDirection: 'lower',
+    agingInterval: 2,
+  });
+
+  const p1 = res.processResults.find((p) => p.pid === 'P1')!;
+  const p2 = res.processResults.find((p) => p.pid === 'P2')!;
+  assert(p1.completionTime === 10, 'Priority Aging P1 CT 10');
+  assert(p2.completionTime === 12, 'Priority Aging P2 CT 12');
+  console.log('✓ Test 8: Priority with Aging Passed');
+}
+
+// Test 9: Advanced Metrics (Context switches, Jain's fairness index, Avg Queue Length)
+{
+  const processes: ProcessConfig[] = [
+    { pid: 'P1', arrivalTime: 0, burstTime: 4, priority: 1 },
+    { pid: 'P2', arrivalTime: 0, burstTime: 4, priority: 1 },
+  ];
+
+  // Round Robin Q=2: P1 (0..2), P2 (2..4), P1 (4..6), P2 (6..8)
+  // Transitions: P1->P2 (1), P2->P1 (2), P1->P2 (3) -> 3 context switches
+  const res = runSchedulingAlgorithm('RR', processes, { quantum: 2 });
+  assert(res.metrics.contextSwitches === 3, `Expected 3 context switches, got ${res.metrics.contextSwitches}`);
+  assertApprox(res.metrics.fairnessIndex, 1.0, 0.05, 'Symmetric RR should have high fairness');
+  // Total wait: P1 waited 2 (from 2 to 4), P2 waited 2 (from 0 to 2) + 2 (from 4 to 6) = 4. Total wait = 6. Total time = 8.
+  // Avg queue length = 6 / 8 = 0.75
+  assertApprox(res.metrics.avgQueueLength, 0.75, 0.05, 'Avg queue length check');
+  console.log('✓ Test 9: Advanced Metrics Passed');
+}
+
+// Test 10: Recommendation Engine
+{
+  // Workload with long initial job and short subsequent jobs (Convoy Effect)
+
+  const convoyWorkload: ProcessConfig[] = [
+    { pid: 'P1', arrivalTime: 0, burstTime: 20, priority: 1 },
+    { pid: 'P2', arrivalTime: 1, burstTime: 2, priority: 1 },
+    { pid: 'P3', arrivalTime: 1, burstTime: 1, priority: 1 },
+    { pid: 'P4', arrivalTime: 2, burstTime: 3, priority: 1 },
+  ];
+
+  const profile = analyzeWorkload(convoyWorkload);
+  assert(profile.convoyRiskDetected === true, 'Profile should detect convoy risk');
+
+  const rec = generateRecommendation(convoyWorkload, 'FCFS');
+  assert(
+    rec.primaryAlgorithm === 'SRTF' || rec.primaryAlgorithm === 'SJF',
+    `Recommendation should be SRTF or SJF, got ${rec.primaryAlgorithm}`
+  );
+  assert(rec.reasons.length > 0, 'Recommendation should give educational reasons');
+  console.log('✓ Test 10: Recommendation Engine Passed');
+}
+
+console.log('ALL 10 ALGORITHMIC TEST SUITES PASSED PERFECTLY!');
+

@@ -40,6 +40,22 @@ export const ALGORITHMS: AlgorithmInfo[] = [
     description: 'Each process gets a fixed time quantum. After expiry, it moves to the back of the queue.',
     preemptive: true,
   },
+  {
+    type: 'MLFQ',
+    name: 'Multi-Level Feedback Queue',
+    shortName: 'MLFQ',
+    description: 'Multi-queue architecture with dynamic demotion on quantum expiry and periodic priority boosting.',
+    preemptive: true,
+    educationalCategory: 'Advanced OS',
+  },
+  {
+    type: 'PRIORITY_AGING',
+    name: 'Priority with Aging',
+    shortName: 'Priority + Aging',
+    description: 'Prevents starvation by dynamically incrementing priority for processes waiting in the ready queue.',
+    preemptive: false,
+    educationalCategory: 'Advanced OS',
+  },
 ];
 
 export const ALGORITHM_METADATA: Record<AlgorithmType, AlgorithmInfo> = {
@@ -48,6 +64,8 @@ export const ALGORITHM_METADATA: Record<AlgorithmType, AlgorithmInfo> = {
   SRTF: ALGORITHMS[2],
   PRIORITY: ALGORITHMS[3],
   RR: ALGORITHMS[4],
+  MLFQ: ALGORITHMS[5],
+  PRIORITY_AGING: ALGORITHMS[6],
 };
 
 export const PRESET_SCENARIOS: PresetScenario[] = [
@@ -63,8 +81,8 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
     ],
   },
   {
-    name: 'Short Jobs vs Long Job',
-    description: 'Demonstrates how a long process affects shorter ones.',
+    name: 'Short Jobs vs Long Job (Convoy)',
+    description: 'Demonstrates how a long process delays shorter ones (Convoy Effect).',
     algorithm: 'SJF',
     processes: [
       { pid: 'P01', arrivalTime: 0, burstTime: 12, priority: 1 },
@@ -75,7 +93,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
   },
   {
     name: 'Round Robin Fairness',
-    description: 'Shows how Round Robin distributes CPU time evenly.',
+    description: 'Shows how Round Robin distributes CPU time evenly with time slicing.',
     algorithm: 'RR',
     timeQuantum: 2,
     processes: [
@@ -85,15 +103,28 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
     ],
   },
   {
-    name: 'Priority Scheduling',
-    description: 'Demonstrates priority-based process selection.',
-    algorithm: 'PRIORITY',
+    name: 'Priority Starvation Prevention (Aging)',
+    description: 'Demonstrates how low-priority tasks age and eventually run before starvation.',
+    algorithm: 'PRIORITY_AGING',
     priorityDirection: 'lower',
+    agingInterval: 3,
     processes: [
-      { pid: 'P01', arrivalTime: 0, burstTime: 4, priority: 3 },
-      { pid: 'P02', arrivalTime: 1, burstTime: 3, priority: 1 },
-      { pid: 'P03', arrivalTime: 2, burstTime: 5, priority: 2 },
-      { pid: 'P04', arrivalTime: 3, burstTime: 2, priority: 4 },
+      { pid: 'P01', arrivalTime: 0, burstTime: 8, priority: 1 },
+      { pid: 'P02', arrivalTime: 1, burstTime: 6, priority: 2 },
+      { pid: 'P03', arrivalTime: 2, burstTime: 4, priority: 4 },
+      { pid: 'P04', arrivalTime: 3, burstTime: 5, priority: 5 },
+    ],
+  },
+  {
+    name: 'MLFQ Adaptive Slicing',
+    description: 'Short interactive tasks finish in Q0; CPU-bound tasks demote to Q1 and Q2.',
+    algorithm: 'MLFQ',
+    timeQuantum: 2,
+    processes: [
+      { pid: 'P01', arrivalTime: 0, burstTime: 2, priority: 1 },
+      { pid: 'P02', arrivalTime: 0, burstTime: 10, priority: 1 },
+      { pid: 'P03', arrivalTime: 1, burstTime: 3, priority: 1 },
+      { pid: 'P04', arrivalTime: 4, burstTime: 1, priority: 1 },
     ],
   },
   {
@@ -151,10 +182,13 @@ export const STATUS_COLORS: Record<string, { bg: string; text: string; border: s
   TERMINATED: { bg: '#F3F4F6', text: '#6B7280', border: '#D1D5DB' },
 };
 
-export const ALGORITHM_DISPLAY_NAMES: Record<string, string> = {
+export const ALGORITHM_DISPLAY_NAMES: Record<AlgorithmType, string> = {
   FCFS: 'First Come, First Served',
   SJF: 'Shortest Job First',
   SRTF: 'Shortest Remaining Time First',
   PRIORITY: 'Priority Scheduling',
   RR: 'Round Robin',
+  MLFQ: 'Multi-Level Feedback Queue',
+  PRIORITY_AGING: 'Priority with Aging',
 };
+
