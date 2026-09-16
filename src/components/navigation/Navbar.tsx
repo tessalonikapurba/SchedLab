@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, X, Cpu, Settings, Play } from 'lucide-react';
+import { Menu, X, Cpu, Play, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '@/context/ThemeContext';
 
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
@@ -17,6 +18,7 @@ const NAV_LINKS = [
 export default function Navbar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -44,7 +46,7 @@ export default function Navbar() {
                 href={link.href}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   isActive(link.href)
-                    ? 'text-accent bg-accent/8'
+                    ? 'text-accent bg-accent/8 font-semibold'
                     : 'text-muted hover:text-foreground hover:bg-surface-alt'
                 }`}
               >
@@ -54,16 +56,28 @@ export default function Navbar() {
           </div>
 
           {/* Right */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-3">
             <button
-              className="p-2 rounded-md text-muted hover:text-foreground hover:bg-surface-alt transition-colors"
-              aria-label="Settings"
+              onClick={toggleTheme}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-alt transition-colors border border-border"
+              aria-label="Toggle theme"
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
             >
-              <Settings size={18} />
+              {theme === 'dark' ? (
+                <>
+                  <Sun size={14} className="text-amber-400" />
+                  <span>Light</span>
+                </>
+              ) : (
+                <>
+                  <Moon size={14} className="text-blue-500" />
+                  <span>Dark</span>
+                </>
+              )}
             </button>
             <Link
               href="/simulator/new"
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent text-white text-sm font-medium rounded-md hover:bg-accent-hover transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-accent text-white text-sm font-semibold rounded-md hover:bg-accent-hover transition-colors shadow-xs"
             >
               <Play size={14} fill="currentColor" />
               Open Simulator

@@ -45,7 +45,9 @@ interface SimulationState {
 
   // Engine
   engine: SimulationEngine | null;
+  engineStepCount: number;
   intervalId: ReturnType<typeof setInterval> | null;
+  animFrameId: number | null;
 
   // Results (computed from full algorithm run for results page)
   results: SchedulingResult | null;
@@ -98,7 +100,9 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   mlfqQueues: { q0: [], q1: [], q2: [] },
 
   engine: null,
+  engineStepCount: 0,
   intervalId: null,
+  animFrameId: null,
   results: null,
 
   // ---- Configuration Actions ----
@@ -135,11 +139,11 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   // ---- Simulation Control Actions ----
 
   initializeSimulation: () => {
-    const { processes, selectedAlgorithm, timeQuantum, priorityDirection, agingInterval } = get();
+    const { processes, selectedAlgorithm, timeQuantum, priorityDirection } = get();
 
-    // Clean up any running interval
-    const { intervalId } = get();
+    // Clean up any running timers / animation frames
     if (intervalId) clearInterval(intervalId);
+    if (animFrameId !== null) cancelAnimationFrame(animFrameId);
 
     // Create engine
     const engine = new SimulationEngine(
@@ -150,7 +154,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       agingInterval
     );
 
-    // Also compute full results upfront for the results page
+    // Also compute full results upfront for the results page & Gantt baseline
     const fullResults = runSchedulingAlgorithm(
       selectedAlgorithm,
       processes,
@@ -167,6 +171,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
     set({
       engine,
+      engineStepCount: 0,
       simulationStatus: 'READY',
       currentTime: 0,
       totalTime: fullResults.totalTime,
@@ -179,25 +184,55 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       schedulerDecision: null,
       selectedProcess: null,
       intervalId: null,
+      animFrameId: null,
       results: fullResults,
       mlfqQueues: { q0: [], q1: [], q2: [] },
     });
   },
 
   play: () => {
-    const { engine, simulationStatus, simulationSpeed, results, simulationName, selectedAlgorithm, processes } = get();
+    const { engine, simulationStatus, simulationSpeed } = get();
     if (!engine || engine.isCompleted) return;
     if (simulationStatus === 'RUNNING') return;
+    if (get().currentTime >= totalTime && totalTime > 0) return;
 
-    const interval = setInterval(() => {
+    if (animFrameId !== null) {
+      cancelAnimationFrame(animFrameId);
+    }
+
+    set({ simulationStatus: 'RUNNING' });
+
+    let lastTimestamp = performance.now();
+
+    const tick = (now: number) => {
       const state = get();
-      if (!state.engine || state.engine.isCompleted) {
-        if (state.intervalId) clearInterval(state.intervalId);
-        set({ simulationStatus: 'COMPLETED', intervalId: null });
-        return;
+      if (state.simulationStatus !== 'RUNNING') return;
+
+      const dt = Math.min((now - lastTimestamp) / 1000, 0.1); // cap dt to 100ms
+      lastTimestamp = now;
+
+      const prevTime = state.currentTime;
+      const newSimTime = Math.min(state.totalTime, prevTime + dt * state.simulationSpeed);
+
+      // Step engine discrete state if simTime reached or passed integer steps
+      let stepCount = state.engineStepCount;
+      let latestDecision = state.schedulerDecision;
+
+      const targetSteps = newSimTime >= state.totalTime
+        ? state.totalTime
+        : Math.floor(newSimTime) + 1;
+
+      if (state.engine && !state.engine.isCompleted) {
+        while (stepCount < targetSteps && !state.engine.isCompleted) {
+          const snapshot = state.engine.step();
+          if (snapshot.decision) {
+            latestDecision = snapshot.decision;
+          }
+          stepCount++;
+        }
       }
 
-      const snapshot = state.engine.step();
+      const isCompleted = newSimTime >= state.totalTime;
 
       set({
         currentTime: state.engine.time,
@@ -208,54 +243,52 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         gantt: state.engine.getGantt(),
         events: state.engine.getEvents(),
         schedulerDecision: snapshot.decision ?? state.schedulerDecision,
-        mlfqQueues: snapshot.mlfqQueues,
         simulationStatus: snapshot.completed ? 'COMPLETED' : 'RUNNING',
       });
 
       if (snapshot.completed) {
         if (state.intervalId) clearInterval(state.intervalId);
         set({ intervalId: null });
-
-        // Record in simulation history
-        if (results) {
-          recordSimulationRun({
-            simulationName: simulationName || 'Simulation',
-            algorithm: selectedAlgorithm,
-            processCount: processes.length,
-            totalTime: results.totalTime,
-            avgWaitingTime: results.metrics.avgWaitingTime,
-            avgTurnaroundTime: results.metrics.avgTurnaroundTime,
-            fairnessIndex: results.metrics.fairnessIndex,
-            contextSwitches: results.metrics.contextSwitches,
-            starvationRisk: results.metrics.starvationRisk,
-          });
-        }
       }
-    }, 1000 / simulationSpeed);
+    };
 
-    set({ simulationStatus: 'RUNNING', intervalId: interval });
+    const frameId = requestAnimationFrame(tick);
+    set({ animFrameId: frameId });
   },
 
   pause: () => {
-    const { intervalId } = get();
+    const { animFrameId, intervalId } = get();
     if (intervalId) clearInterval(intervalId);
-    set({ simulationStatus: 'PAUSED', intervalId: null });
+    if (animFrameId !== null) cancelAnimationFrame(animFrameId);
+    set({ simulationStatus: 'PAUSED', intervalId: null, animFrameId: null });
   },
 
   step: () => {
-    const { engine, intervalId, results, simulationName, selectedAlgorithm, processes } = get();
+    const { engine, intervalId } = get();
     if (!engine || engine.isCompleted) return;
 
-    // Pause if playing
-    if (intervalId) {
-      clearInterval(intervalId);
-      set({ intervalId: null });
+    if (intervalId) clearInterval(intervalId);
+    if (animFrameId !== null) cancelAnimationFrame(animFrameId);
+
+    const targetTime = Math.min(totalTime, Math.floor(currentTime) + 1);
+    let stepCount = engineStepCount;
+    let latestDecision = get().schedulerDecision;
+
+    const targetSteps = targetTime >= totalTime ? totalTime : Math.floor(targetTime) + 1;
+
+    while (stepCount < targetSteps && !engine.isCompleted) {
+      const snapshot = engine.step();
+      if (snapshot.decision) {
+        latestDecision = snapshot.decision;
+      }
+      stepCount++;
     }
 
-    const snapshot = engine.step();
+    const isCompleted = targetTime >= totalTime;
 
     set({
-      currentTime: engine.time,
+      currentTime: targetTime,
+      engineStepCount: stepCount,
       currentProcess: engine.getCpuProcess(),
       readyQueue: engine.getReadyQueue(),
       processStates: engine.getProcessStates(),
@@ -263,7 +296,6 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       gantt: engine.getGantt(),
       events: engine.getEvents(),
       schedulerDecision: snapshot.decision ?? get().schedulerDecision,
-      mlfqQueues: snapshot.mlfqQueues,
       simulationStatus: snapshot.completed ? 'COMPLETED' : 'PAUSED',
     });
 
@@ -283,11 +315,13 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   reset: () => {
-    const { intervalId } = get();
+    const { animFrameId, intervalId } = get();
     if (intervalId) clearInterval(intervalId);
+    if (animFrameId !== null) cancelAnimationFrame(animFrameId);
 
     set({
       engine: null,
+      engineStepCount: 0,
       simulationStatus: 'IDLE',
       currentTime: 0,
       totalTime: 0,
@@ -300,22 +334,14 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       schedulerDecision: null,
       selectedProcess: null,
       intervalId: null,
+      animFrameId: null,
       results: null,
       mlfqQueues: { q0: [], q1: [], q2: [] },
     });
   },
 
   setSpeed: (speed) => {
-    const { simulationStatus, intervalId } = get();
     set({ simulationSpeed: speed });
-
-    // If running, restart interval with new speed
-    if (simulationStatus === 'RUNNING' && intervalId) {
-      clearInterval(intervalId);
-      set({ intervalId: null, simulationStatus: 'PAUSED' });
-      // Small delay then resume
-      setTimeout(() => get().play(), 50);
-    }
   },
 
   selectProcess: (pid) => set({ selectedProcess: pid }),

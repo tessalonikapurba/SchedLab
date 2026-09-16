@@ -66,11 +66,10 @@ export default function LiveSimulationPage() {
           <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-sim-muted">
             <button
               onClick={() => setExplainMode(!explainMode)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                explainMode
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${explainMode
                   ? 'bg-accent/20 text-accent border border-accent/40'
                   : 'bg-sim-surface text-sim-muted border border-sim-border hover:text-sim-text'
-              }`}
+                }`}
             >
               <Sparkles size={13} className={explainMode ? 'text-accent' : 'text-sim-muted'} />
               Explain as You Simulate: {explainMode ? 'ON' : 'OFF'}
@@ -78,7 +77,7 @@ export default function LiveSimulationPage() {
 
             <span className="flex items-center gap-1">
               <Clock size={13} />
-              T = <span className="text-sim-text font-bold text-sm">{store.currentTime}</span>
+              T = <span className="text-sim-text font-semibold">{store.currentTime}</span>
             </span>
 
             {store.simulationStatus === 'COMPLETED' && (
@@ -195,11 +194,10 @@ function SimulationControls() {
             <button
               key={s}
               onClick={() => setSpeed(s)}
-              className={`px-2 py-1 rounded font-mono font-bold transition-colors ${
-                simulationSpeed === s
+              className={`px-2 py-1 rounded font-mono font-bold transition-colors ${simulationSpeed === s
                   ? 'bg-accent text-white'
                   : 'text-sim-muted hover:text-sim-text hover:bg-sim-bg-deep'
-              }`}
+                }`}
             >
               {s}x
             </button>
@@ -209,15 +207,14 @@ function SimulationControls() {
         {/* Status indicator */}
         <div className="flex items-center gap-2">
           <span
-            className={`w-2 h-2 rounded-full ${
-              simulationStatus === 'RUNNING'
+            className={`w-2 h-2 rounded-full ${simulationStatus === 'RUNNING'
                 ? 'bg-emerald-400 animate-pulse'
                 : simulationStatus === 'PAUSED'
-                ? 'bg-amber-400'
-                : simulationStatus === 'COMPLETED'
-                ? 'bg-blue-400'
-                : 'bg-sim-muted'
-            }`}
+                  ? 'bg-amber-400'
+                  : simulationStatus === 'COMPLETED'
+                    ? 'bg-blue-400'
+                    : 'bg-sim-muted'
+              }`}
           />
           <span className="text-xs font-mono font-semibold uppercase text-sim-muted">
             {simulationStatus}
@@ -457,11 +454,10 @@ function SchedulerDecisionPanel() {
                   {schedulerDecision.candidates.map((cand) => (
                     <div
                       key={cand.pid}
-                      className={`flex items-center justify-between px-2 py-1 rounded text-[11px] font-mono ${
-                        cand.pid === schedulerDecision.pid
+                      className={`flex items-center justify-between px-2 py-1 rounded text-[11px] font-mono ${cand.pid === schedulerDecision.pid
                           ? 'bg-accent/15 text-accent font-bold border border-accent/30'
                           : 'bg-sim-bg-deep text-sim-muted'
-                      }`}
+                        }`}
                     >
                       <span>{cand.pid}</span>
                       <span>{cand.detail}</span>
@@ -482,7 +478,13 @@ function SchedulerDecisionPanel() {
 // ==================== Process States ====================
 
 function ProcessStatesPanel() {
-  const { processes, processStates, selectProcess, selectedProcess } = useSimulationStore();
+  const { processes, processStates, selectProcess, selectedProcess, currentProcess } = useSimulationStore();
+
+  useEffect(() => {
+    if (!selectedProcess && currentProcess) {
+      selectProcess(currentProcess);
+    }
+  }, [currentProcess, selectedProcess, selectProcess]);
 
   return (
     <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden h-full">
@@ -490,7 +492,7 @@ function ProcessStatesPanel() {
         <Zap size={13} className="text-yellow-400" />
         <span className="text-xs font-semibold text-sim-text uppercase tracking-wider">Process States</span>
       </div>
-      <div className="p-3 space-y-1.5">
+      <div className="p-3 space-y-1.5" role="listbox" aria-label="Process States">
         {processes.map((proc) => {
           const status = processStates[proc.pid] || 'NEW';
           const colors = STATUS_COLORS[status];
@@ -500,11 +502,19 @@ function ProcessStatesPanel() {
             <motion.button
               key={proc.pid}
               onClick={() => selectProcess(isSelected ? null : proc.pid)}
-              className={`w-full flex items-center justify-between p-2.5 rounded border transition-colors text-left ${
-                isSelected
-                  ? 'border-accent bg-accent/10'
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  selectProcess(isSelected ? null : proc.pid);
+                }
+              }}
+              tabIndex={0}
+              role="option"
+              aria-selected={isSelected}
+              className={`w-full flex items-center justify-between p-2.5 rounded border transition-colors text-left focus:outline-none focus:ring-2 focus:ring-info/50 ${isSelected
+                  ? 'border-info bg-info-bg/20 ring-1 ring-info/50'
                   : 'border-sim-border bg-sim-bg-deep hover:border-sim-border/80'
-              }`}
+                }`}
               layout
             >
               <div className="flex items-center gap-2">
@@ -535,72 +545,70 @@ function ProcessStatesPanel() {
 // ==================== Process Inspector ====================
 
 function ProcessInspector() {
-  const { selectedProcess, processes, remainingTimes, processStates, selectProcess } = useSimulationStore();
-  const proc = selectedProcess ? processes.find((p) => p.pid === selectedProcess) : null;
+  const { selectedProcess, processes, processStates, remainingTimes, results } = useSimulationStore();
 
   if (!proc) {
     return (
-      <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden h-full flex items-center justify-center p-6 text-center">
-        <div>
-          <Activity size={24} className="text-sim-muted mx-auto mb-2 opacity-50" />
-          <p className="text-xs text-sim-muted">Click any process to inspect its PCB runtime attributes.</p>
+      <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden h-full">
+        <div className="px-3 py-2 border-b border-sim-border bg-sim-bg-deep">
+          <span className="text-xs font-semibold text-sim-text uppercase tracking-wider">Process Inspector</span>
+        </div>
+        <div className="p-4 text-center">
+          <p className="text-xs text-sim-muted">Click a process to inspect its details.</p>
         </div>
       </div>
     );
   }
 
-  const status = processStates[proc.pid] || 'NEW';
-  const remaining = remainingTimes[proc.pid] ?? proc.burstTime;
-  const elapsed = proc.burstTime - remaining;
-  const progressPct = proc.burstTime > 0 ? (elapsed / proc.burstTime) * 100 : 0;
+  const proc = processes.find((p) => p.pid === selectedProcess)!;
+  const status = processStates[selectedProcess] || 'NEW';
+  const remaining = remainingTimes[selectedProcess] ?? proc.burstTime;
+  const result = results?.processResults.find((r) => r.pid === selectedProcess);
+
+  const rows: [string, string | number][] = [
+    ['PID', proc.pid],
+    ['State', status],
+    ['Arrival Time', proc.arrivalTime],
+    ['Burst Time', proc.burstTime],
+    ['Remaining', remaining],
+    ['Priority', proc.priority],
+  ];
+
+  if (result) {
+    rows.push(
+      ['First Start', result.firstStart],
+      ['Completion', result.completionTime],
+      ['Turnaround', result.turnaroundTime],
+      ['Waiting', result.waitingTime],
+      ['Response', result.responseTime]
+    );
+  }
 
   return (
     <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden h-full">
       <div className="px-3 py-2 border-b border-sim-border bg-sim-bg-deep flex items-center justify-between">
-        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider flex items-center gap-1.5">
-          <Activity size={13} className="text-accent" />
-          Process Control Block ({proc.pid})
+        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider">
+          Process Inspector — <span className="font-mono">{selectedProcess}</span>
         </span>
-        <button onClick={() => selectProcess(null)} className="text-sim-muted hover:text-sim-text">
+        <button
+          onClick={() => useSimulationStore.getState().selectProcess(null)}
+          className="text-sim-muted hover:text-sim-text"
+          aria-label="Close inspector"
+        >
           <X size={14} />
         </button>
       </div>
-
-      <div className="p-4 space-y-4 text-xs">
-        <div>
-          <div className="flex justify-between text-sim-muted mb-1">
-            <span>Execution Progress</span>
-            <span className="font-mono">{elapsed}/{proc.burstTime} ({Math.round(progressPct)}%)</span>
-          </div>
-          <div className="h-2 rounded-full bg-sim-bg-deep border border-sim-border overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{
-                width: `${progressPct}%`,
-                backgroundColor: getProcessColor(proc.pid),
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-2 rounded bg-sim-bg-deep border border-sim-border">
-            <span className="text-[10px] text-sim-muted uppercase">Arrival Time</span>
-            <p className="text-sm font-mono font-bold text-sim-text">{proc.arrivalTime}</p>
-          </div>
-          <div className="p-2 rounded bg-sim-bg-deep border border-sim-border">
-            <span className="text-[10px] text-sim-muted uppercase">Burst Time</span>
-            <p className="text-sm font-mono font-bold text-sim-text">{proc.burstTime}</p>
-          </div>
-          <div className="p-2 rounded bg-sim-bg-deep border border-sim-border">
-            <span className="text-[10px] text-sim-muted uppercase">Priority</span>
-            <p className="text-sm font-mono font-bold text-sim-text">{proc.priority}</p>
-          </div>
-          <div className="p-2 rounded bg-sim-bg-deep border border-sim-border">
-            <span className="text-[10px] text-sim-muted uppercase">Status</span>
-            <p className="text-sm font-mono font-bold text-accent">{status}</p>
-          </div>
-        </div>
+      <div className="p-3">
+        <table className="w-full text-xs">
+          <tbody>
+            {rows.map(([label, value]) => (
+              <tr key={label} className="border-b border-sim-border last:border-b-0">
+                <td className="py-1.5 text-sim-muted pr-3">{label}</td>
+                <td className="py-1.5 font-mono font-semibold text-sim-text text-right">{value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -609,76 +617,121 @@ function ProcessInspector() {
 // ==================== Gantt Chart ====================
 
 function GanttChart() {
-  const { gantt, currentTime } = useSimulationStore();
+  const { results, currentTime, totalTime, simulationStatus } = useSimulationStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const finalSchedule = results?.gantt ?? [];
+  const maxTime = totalTime || (finalSchedule.length > 0 ? finalSchedule[finalSchedule.length - 1].end : 0);
+  const UNIT = 40; // px per time unit
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+    if (scrollRef.current && simulationStatus === 'RUNNING') {
+      const targetScroll = currentTime * UNIT - scrollRef.current.clientWidth / 2;
+      scrollRef.current.scrollLeft = Math.max(0, targetScroll);
     }
   }, [gantt]);
 
   const maxTime = gantt.length > 0 ? Math.max(...gantt.map((s) => s.end)) : 0;
-  const UNIT = 38; // px per time unit
+  const UNIT = 40; // px per time unit
 
   return (
     <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden">
-      <div className="px-3 py-2 border-b border-sim-border bg-sim-bg-deep flex items-center justify-between">
-        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider">Live Gantt Chart</span>
-        <span className="text-[10px] font-mono text-sim-muted">{gantt.length} segments</span>
+      <div className="px-3 py-2 border-b border-sim-border bg-sim-bg-deep">
+        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider">Gantt Chart</span>
       </div>
       <div className="p-3">
         {gantt.length === 0 ? (
-          <p className="text-xs text-sim-muted text-center py-4">Gantt segments will appear as simulation runs.</p>
+          <p className="text-xs text-sim-muted text-center py-4">Gantt chart will appear as the simulation runs.</p>
         ) : (
-          <div ref={scrollRef} className="overflow-x-auto pb-2">
-            <div style={{ minWidth: maxTime * UNIT + 20 }}>
-              {/* Blocks */}
-              <div className="flex h-10">
-                {gantt.map((seg, i) => {
-                  const width = (seg.end - seg.start) * UNIT;
-                  const isActive = currentTime >= seg.start && currentTime < seg.end;
+          <div ref={scrollRef} className="overflow-x-auto pb-4 pt-1">
+            <div style={{ width: Math.max(maxTime * UNIT + 40, 320) }} className="relative">
+              {/* Blocks track */}
+              <div className="flex h-10 relative bg-sim-bg-deep/60 rounded-xs border border-sim-border/50">
+                {finalSchedule.map((seg, i) => {
+                  const blockStart = seg.start;
+                  const blockEnd = seg.end;
+                  const visibleEnd = Math.min(currentTime, blockEnd);
+                  const visibleDuration = Math.max(0, visibleEnd - blockStart);
+
+                  if (visibleDuration <= 0) return null;
+
+                  const width = visibleDuration * UNIT;
+                  const isActive = currentTime >= blockStart && currentTime < blockEnd;
+
                   return (
                     <div
                       key={i}
-                      className={`h-full flex items-center justify-center border-r border-sim-bg-deep text-[10px] font-mono font-bold shrink-0 relative ${
-                        seg.pid
+                      className={`h-full flex items-center justify-center border-r border-sim-bg-deep text-[10px] font-mono font-bold shrink-0 relative transition-all ${seg.pid
                           ? 'text-white'
                           : 'text-sim-muted bg-sim-bg-deep border-dashed border-sim-border'
-                      }`}
+                        } ${isActive ? 'ring-1 ring-white/60 ring-inset z-10' : ''}`}
                       style={{
-                        width,
+                        width: `${width}px`,
                         backgroundColor: seg.pid ? getProcessColor(seg.pid) : undefined,
-                        opacity: isActive ? 1 : 0.8,
+                        opacity: isActive ? 1 : 0.75,
                       }}
-                      title={seg.pid ? `${seg.pid}: ${seg.start}–${seg.end}` : `IDLE: ${seg.start}–${seg.end}`}
+                      title={
+                        seg.pid
+                          ? `${seg.pid}: ${seg.start}–${seg.end} (Visible: ${visibleDuration.toFixed(1)}u)`
+                          : `IDLE: ${seg.start}–${seg.end}`
+                      }
                     >
-                      {seg.pid || 'IDLE'}
+                      {width > 22 && (
+                        <span className="truncate px-1 text-[10px] font-mono">{seg.pid || 'IDLE'}</span>
+                      )}
                       {isActive && (
-                        <div className="absolute top-0 right-0 w-0.5 h-full bg-white/90 animate-pulse" />
+                        <div className="absolute top-0 right-0 w-0.5 h-full bg-white/80 animate-pulse" />
                       )}
                     </div>
                   );
                 })}
+
+                {/* Vertical Current Time Indicator / Cursor Line */}
+                {maxTime > 0 && currentTime <= maxTime && (
+                  <div
+                    className="absolute top-0 bottom-0 pointer-events-none z-20 flex flex-col items-center"
+                    style={{ left: `${currentTime * UNIT}px` }}
+                  >
+                    <div className="w-0.5 h-full bg-accent shadow-sm" />
+                    <div className="absolute -top-1 w-2 h-2 rounded-full bg-accent border border-white" />
+                  </div>
+                )}
               </div>
-              {/* Time scale */}
-              <div className="flex">
-                {gantt.map((seg, i) => {
-                  const width = (seg.end - seg.start) * UNIT;
+
+              {/* Time scale / Axis labels */}
+              <div className="relative h-6 mt-1.5 text-[9px] font-mono text-sim-muted">
+                {finalSchedule.map((seg, i) => {
+                  if (currentTime < seg.start) return null;
+                  const visibleEnd = Math.min(currentTime, seg.end);
+                  const visibleDuration = Math.max(0, visibleEnd - seg.start);
+                  if (visibleDuration <= 0) return null;
+
+                  const width = visibleDuration * UNIT;
+                  const showEndLabel = currentTime >= seg.end;
+
                   return (
                     <div
                       key={i}
-                      className="text-[9px] font-mono text-sim-muted shrink-0 border-r border-sim-border pt-1"
-                      style={{ width }}
+                      className="absolute top-0 flex justify-between border-l border-sim-border/70 pt-0.5 px-0.5"
+                      style={{
+                        left: `${seg.start * UNIT}px`,
+                        width: `${width}px`,
+                      }}
                     >
-                      {seg.start}
+                      <span>{seg.start}</span>
+                      {showEndLabel && <span>{seg.end}</span>}
                     </div>
                   );
                 })}
-                {gantt.length > 0 && (
-                  <span className="text-[9px] font-mono text-sim-muted pt-1">
-                    {gantt[gantt.length - 1].end}
-                  </span>
+
+                {/* Dynamic current time indicator badge on timeline axis */}
+                {currentTime > 0 && currentTime < maxTime && (
+                  <div
+                    className="absolute top-1 pointer-events-none z-20 text-[9px] font-mono font-bold text-accent px-1 rounded bg-accent/20 border border-accent/40 -translate-x-1/2"
+                    style={{ left: `${currentTime * UNIT}px` }}
+                  >
+                    {currentTime.toFixed(1)}
+                  </div>
                 )}
               </div>
             </div>
