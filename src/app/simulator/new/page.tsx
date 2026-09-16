@@ -364,10 +364,11 @@ export default function NewSimulationPage() {
               {ALGORITHMS.map((algo) => (
                 <label
                   key={algo.type}
-                  className={`flex items-start gap-2.5 p-2.5 rounded-md cursor-pointer border transition-colors ${selectedAlgorithm === algo.type
-                      ? 'border-accent/50 bg-accent/5'
-                      : 'border-transparent hover:bg-surface-alt'
-                    }`}
+                  className={`flex items-start gap-2.5 p-2.5 rounded-md cursor-pointer border transition-colors ${
+                    selectedAlgorithm === algo.type
+                      ? 'border-accent/60 bg-accent/8'
+                      : 'border-border/60 hover:bg-surface-alt'
+                  }`}
                 >
                   <input
                     type="radio"
@@ -375,7 +376,7 @@ export default function NewSimulationPage() {
                     value={algo.type}
                     checked={selectedAlgorithm === algo.type}
                     onChange={() => setAlgorithm(algo.type)}
-                    className="mt-0.5 text-info focus:ring-info accent-blue-600"
+                    className="mt-0.5 accent-accent"
                   />
                   <div>
                     <div className="flex items-center gap-1.5">
@@ -387,8 +388,11 @@ export default function NewSimulationPage() {
                       )}
                     </div>
                     <p className="text-[11px] text-muted leading-snug mt-0.5">{algo.description}</p>
-                    <span className={`inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${algo.preemptive ? 'bg-info-bg text-info' : 'bg-surface-alt text-muted'
-                      }`}>
+                    <span
+                      className={`inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                        algo.preemptive ? 'bg-info-bg text-info' : 'bg-surface-alt text-muted'
+                      }`}
+                    >
                       {algo.preemptive ? 'Preemptive' : 'Non-preemptive'}
                     </span>
                   </div>
