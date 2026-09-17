@@ -21,7 +21,11 @@ import {
   Check,
 } from 'lucide-react';
 import { useSimulationStore } from '@/store/simulation';
-import type { ProcessConfig, PriorityDirection, SavedScenario } from '@/lib/types';
+import type {
+  ProcessConfig,
+  PriorityDirection,
+  SavedScenario,
+} from '@/lib/types';
 import { ALGORITHMS, PRESET_SCENARIOS } from '@/lib/constants';
 
 import {
@@ -38,6 +42,7 @@ import {
 
 export default function NewSimulationPage() {
   const router = useRouter();
+
   const {
     simulationName,
     setSimulationName,
@@ -67,38 +72,74 @@ export default function NewSimulationPage() {
   const [saveName, setSaveName] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
 
-  // Auto-decode scenario from URL query on initial load (?sc=...)
+  // Load a shared scenario from the URL.
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const encoded = params.get('sc');
-      if (encoded) {
-        const decoded = decodeScenarioFromUrl(encoded);
-        if (decoded && decoded.processes && decoded.processes.length > 0) {
-          setProcesses(decoded.processes);
-          if (decoded.name) setSimulationName(decoded.name);
-          if (decoded.algorithm) setAlgorithm(decoded.algorithm);
-          if (decoded.timeQuantum) setQuantum(decoded.timeQuantum);
-          if (decoded.priorityDirection) setPriorityDirection(decoded.priorityDirection);
-          if (decoded.agingInterval) setAgingInterval(decoded.agingInterval);
-        }
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get('sc');
+
+    if (!encoded) return;
+
+    const decoded = decodeScenarioFromUrl(encoded);
+
+    if (decoded && decoded.processes && decoded.processes.length > 0) {
+      setProcesses(decoded.processes);
+
+      if (decoded.name) {
+        setSimulationName(decoded.name);
+      }
+
+      if (decoded.algorithm) {
+        setAlgorithm(decoded.algorithm);
+      }
+
+      if (decoded.timeQuantum) {
+        setQuantum(decoded.timeQuantum);
+      }
+
+      if (decoded.priorityDirection) {
+        setPriorityDirection(decoded.priorityDirection);
+      }
+
+      if (decoded.agingInterval) {
+        setAgingInterval(decoded.agingInterval);
       }
     }
-  }, [setProcesses, setSimulationName, setAlgorithm, setQuantum, setPriorityDirection, setAgingInterval]);
+  }, [
+    setProcesses,
+    setSimulationName,
+    setAlgorithm,
+    setQuantum,
+    setPriorityDirection,
+    setAgingInterval,
+  ]);
 
   const handleRunSimulation = () => {
     if (processes.length === 0) return;
+
     initializeSimulation();
     router.push('/simulator/live');
   };
 
   const handlePreset = (idx: number) => {
     const preset = PRESET_SCENARIOS[idx];
+
     setProcesses(preset.processes);
     setAlgorithm(preset.algorithm);
-    if (preset.timeQuantum) setQuantum(preset.timeQuantum);
-    if (preset.priorityDirection) setPriorityDirection(preset.priorityDirection);
-    if (preset.agingInterval) setAgingInterval(preset.agingInterval);
+
+    if (preset.timeQuantum) {
+      setQuantum(preset.timeQuantum);
+    }
+
+    if (preset.priorityDirection) {
+      setPriorityDirection(preset.priorityDirection);
+    }
+
+    if (preset.agingInterval) {
+      setAgingInterval(preset.agingInterval);
+    }
+
     setSimulationName(preset.name);
     setShowPresets(false);
   };
@@ -106,9 +147,19 @@ export default function NewSimulationPage() {
   const handleSelectSavedScenario = (sc: SavedScenario) => {
     setProcesses(sc.processes);
     setAlgorithm(sc.algorithm);
-    if (sc.timeQuantum) setQuantum(sc.timeQuantum);
-    if (sc.priorityDirection) setPriorityDirection(sc.priorityDirection);
-    if (sc.agingInterval) setAgingInterval(sc.agingInterval);
+
+    if (sc.timeQuantum) {
+      setQuantum(sc.timeQuantum);
+    }
+
+    if (sc.priorityDirection) {
+      setPriorityDirection(sc.priorityDirection);
+    }
+
+    if (sc.agingInterval) {
+      setAgingInterval(sc.agingInterval);
+    }
+
     setSimulationName(sc.name);
     setShowSavedScenarios(false);
   };
@@ -123,21 +174,28 @@ export default function NewSimulationPage() {
     priMax: number
   ) => {
     const procs: ProcessConfig[] = [];
+
     for (let i = 1; i <= count; i++) {
       const pid = `P${String(i).padStart(2, '0')}`;
+
       procs.push({
         pid,
-        arrivalTime: Math.floor(Math.random() * (arrMax - arrMin + 1)) + arrMin,
-        burstTime: Math.floor(Math.random() * (burstMax - burstMin + 1)) + burstMin,
-        priority: Math.floor(Math.random() * (priMax - priMin + 1)) + priMin,
+        arrivalTime:
+          Math.floor(Math.random() * (arrMax - arrMin + 1)) + arrMin,
+        burstTime:
+          Math.floor(Math.random() * (burstMax - burstMin + 1)) + burstMin,
+        priority:
+          Math.floor(Math.random() * (priMax - priMin + 1)) + priMin,
       });
     }
+
     setProcesses(procs);
     setShowRandomizer(false);
   };
 
   const handleShareLink = () => {
     if (processes.length === 0) return;
+
     const encoded = encodeScenarioToUrl({
       name: simulationName,
       processes,
@@ -148,6 +206,7 @@ export default function NewSimulationPage() {
     });
 
     const shareUrl = `${window.location.origin}/simulator/new?sc=${encoded}`;
+
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopiedToast(true);
       setTimeout(() => setCopiedToast(false), 2500);
@@ -156,6 +215,7 @@ export default function NewSimulationPage() {
 
   const handleSaveScenarioSubmit = () => {
     if (!saveName.trim() || processes.length === 0) return;
+
     saveScenario({
       name: saveName.trim(),
       processes,
@@ -164,6 +224,7 @@ export default function NewSimulationPage() {
       priorityDirection,
       agingInterval,
     });
+
     setShowSaveModal(false);
     setSaveName('');
     setShowSavedScenarios(true);
@@ -181,20 +242,25 @@ export default function NewSimulationPage() {
             className="fixed top-20 right-8 z-50 flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg shadow-xl text-xs font-semibold"
           >
             <Check size={16} />
-            Shareable simulation link copied to clipboard!
+            Share link copied to clipboard.
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Simulation Lab Setup</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Simulation Lab Setup
+          </h1>
+
           <p className="text-sm text-muted mt-0.5">
-            Configure processes, tune algorithm parameters, and analyze scheduling behavior.
+            Configure processes and scheduling parameters before running the
+            simulation.
           </p>
         </div>
 
-        {/* Top Actions: Share, History, Saved */}
+        {/* Scenario Actions */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowSavedScenarios(true)}
@@ -203,6 +269,7 @@ export default function NewSimulationPage() {
             <Bookmark size={14} className="text-accent" />
             Saved Scenarios
           </button>
+
           <button
             onClick={() => setShowHistory(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted bg-surface border border-border rounded-md hover:bg-surface-alt transition-colors"
@@ -210,11 +277,12 @@ export default function NewSimulationPage() {
             <History size={14} />
             History
           </button>
+
           <button
             onClick={handleShareLink}
             disabled={processes.length === 0}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted bg-surface border border-border rounded-md hover:bg-surface-alt transition-colors disabled:opacity-40"
-            title="Copy shareable link with workload to clipboard"
+            title="Copy a shareable link for this workload"
           >
             <Share2 size={14} />
             Share Link
@@ -222,12 +290,16 @@ export default function NewSimulationPage() {
         </div>
       </div>
 
-      {/* Simulation Name & Save */}
+      {/* Simulation Name */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <div className="w-full max-w-md">
-          <label htmlFor="sim-name" className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+          <label
+            htmlFor="sim-name"
+            className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5"
+          >
             Scenario / Lab Name
           </label>
+
           <input
             id="sim-name"
             type="text"
@@ -237,6 +309,7 @@ export default function NewSimulationPage() {
             placeholder="Untitled Simulation"
           />
         </div>
+
         <div className="sm:pt-5">
           <button
             onClick={() => {
@@ -253,11 +326,14 @@ export default function NewSimulationPage() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left: Process Table */}
+        {/* Process Table */}
         <div className="lg:col-span-2">
           <div className="border border-border rounded-md bg-surface overflow-hidden">
             <div className="flex flex-wrap items-center justify-between px-4 py-3 border-b border-border bg-surface-alt gap-2">
-              <h2 className="text-sm font-semibold text-foreground">Process Table ({processes.length})</h2>
+              <h2 className="text-sm font-semibold text-foreground">
+                Process Table ({processes.length})
+              </h2>
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowPresets(true)}
@@ -266,6 +342,7 @@ export default function NewSimulationPage() {
                   <Layers size={13} />
                   Presets
                 </button>
+
                 <button
                   onClick={() => setShowRandomizer(true)}
                   className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-muted border border-border rounded-md hover:bg-background transition-colors"
@@ -273,6 +350,7 @@ export default function NewSimulationPage() {
                   <Shuffle size={13} />
                   Randomize
                 </button>
+
                 <button
                   onClick={() => setProcesses([])}
                   className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-muted border border-border rounded-md hover:bg-background transition-colors"
@@ -283,32 +361,61 @@ export default function NewSimulationPage() {
               </div>
             </div>
 
-            {/* Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-sm" id="process-table">
                 <thead>
                   <tr className="border-b border-border bg-surface-alt/50">
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wider">PID</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wider">Arrival Time</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wider">Burst Time</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wider">Priority</th>
-                    <th className="text-right px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wider">Actions</th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wider">
+                      PID
+                    </th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wider">
+                      Arrival Time
+                    </th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wider">
+                      Burst Time
+                    </th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wider">
+                      Priority
+                    </th>
+                    <th className="text-right px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-border">
                   {processes.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">
-                        No processes configured yet. Add processes manually, pick a preset, or randomize.
+                      <td
+                        colSpan={5}
+                        className="px-4 py-8 text-center text-sm text-muted"
+                      >
+                        No processes configured. Add a process, choose a
+                        preset, or generate a random workload.
                       </td>
                     </tr>
                   ) : (
                     processes.map((proc) => (
-                      <tr key={proc.pid} className="hover:bg-surface-alt/40 transition-colors">
-                        <td className="px-4 py-2.5 font-mono font-bold text-accent">{proc.pid}</td>
-                        <td className="px-4 py-2.5 font-mono text-muted">{proc.arrivalTime}</td>
-                        <td className="px-4 py-2.5 font-mono text-muted">{proc.burstTime}</td>
-                        <td className="px-4 py-2.5 font-mono text-muted">{proc.priority}</td>
+                      <tr
+                        key={proc.pid}
+                        className="hover:bg-surface-alt/40 transition-colors"
+                      >
+                        <td className="px-4 py-2.5 font-mono font-bold text-accent">
+                          {proc.pid}
+                        </td>
+
+                        <td className="px-4 py-2.5 font-mono text-muted">
+                          {proc.arrivalTime}
+                        </td>
+
+                        <td className="px-4 py-2.5 font-mono text-muted">
+                          {proc.burstTime}
+                        </td>
+
+                        <td className="px-4 py-2.5 font-mono text-muted">
+                          {proc.priority}
+                        </td>
+
                         <td className="px-4 py-2.5 text-right space-x-1">
                           <button
                             onClick={() => {
@@ -320,6 +427,7 @@ export default function NewSimulationPage() {
                           >
                             <Edit3 size={14} />
                           </button>
+
                           <button
                             onClick={() => deleteProcess(proc.pid)}
                             className="p-1 text-muted hover:text-error rounded hover:bg-surface-alt"
@@ -335,7 +443,7 @@ export default function NewSimulationPage() {
               </table>
             </div>
 
-            {/* Add Process Button */}
+            {/* Add Process */}
             <div className="p-3 border-t border-border bg-surface-alt/30">
               <button
                 onClick={() => {
@@ -351,24 +459,27 @@ export default function NewSimulationPage() {
           </div>
         </div>
 
-        {/* Right: Algorithm Selector & Parameters */}
+        {/* Algorithm Configuration */}
         <div className="space-y-4">
           <div className="border border-border rounded-md bg-surface overflow-hidden">
             <div className="px-4 py-3 border-b border-border bg-surface-alt flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Scheduling Algorithm</h2>
+              <h2 className="text-sm font-semibold text-foreground">
+                Scheduling Algorithm
+              </h2>
+
               <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-accent/10 text-accent font-semibold">
                 7 Available
               </span>
             </div>
+
             <div className="p-3 space-y-2 max-h-96 overflow-y-auto">
               {ALGORITHMS.map((algo) => (
                 <label
                   key={algo.type}
-                  className={`flex items-start gap-2.5 p-2.5 rounded-md cursor-pointer border transition-colors ${
-                    selectedAlgorithm === algo.type
+                  className={`flex items-start gap-2.5 p-2.5 rounded-md cursor-pointer border transition-colors ${selectedAlgorithm === algo.type
                       ? 'border-accent/60 bg-accent/8'
                       : 'border-border/60 hover:bg-surface-alt'
-                  }`}
+                    }`}
                 >
                   <input
                     type="radio"
@@ -378,22 +489,33 @@ export default function NewSimulationPage() {
                     onChange={() => setAlgorithm(algo.type)}
                     className="mt-0.5 accent-accent"
                   />
+
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-bold text-foreground">{algo.shortName}</p>
+                      <p className="text-xs font-bold text-foreground">
+                        {algo.shortName}
+                      </p>
+
                       {algo.educationalCategory === 'Advanced OS' && (
                         <span className="text-[9px] font-semibold px-1 py-0.2 rounded bg-amber-500/15 text-amber-600 border border-amber-500/30">
                           Advanced
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted leading-snug mt-0.5">{algo.description}</p>
+
+                    <p className="text-[11px] text-muted leading-snug mt-0.5">
+                      {algo.description}
+                    </p>
+
                     <span
-                      className={`inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                        algo.preemptive ? 'bg-info-bg text-info' : 'bg-surface-alt text-muted'
-                      }`}
+                      className={`inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${algo.preemptive
+                          ? 'bg-info-bg text-info'
+                          : 'bg-surface-alt text-muted'
+                        }`}
                     >
-                      {algo.preemptive ? 'Preemptive' : 'Non-preemptive'}
+                      {algo.preemptive
+                        ? 'Preemptive'
+                        : 'Non-preemptive'}
                     </span>
                   </div>
                 </label>
@@ -401,72 +523,102 @@ export default function NewSimulationPage() {
             </div>
           </div>
 
-          {/* Algorithm-Specific Tuning Parameters */}
-          {(selectedAlgorithm === 'RR' || selectedAlgorithm === 'MLFQ') && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="border border-border rounded-md bg-surface p-4 space-y-2"
-            >
-              <label className="block text-xs font-semibold text-muted uppercase tracking-wide">
-                {selectedAlgorithm === 'MLFQ' ? 'Q0 Time Quantum (Q1 = 2 × Q0)' : 'Time Quantum (Q)'}
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={timeQuantum}
-                onChange={(e) => setQuantum(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
-              />
-              <p className="text-[11px] text-muted">
-                {selectedAlgorithm === 'MLFQ'
-                  ? `Q0 runs at Q=${timeQuantum}, Q1 runs at Q=${timeQuantum * 2}, Q2 runs FCFS. Periodic boost every 20 units.`
-                  : 'Shorter quantum improves responsiveness but increases context switching costs.'}
-              </p>
-            </motion.div>
-          )}
-
-          {(selectedAlgorithm === 'PRIORITY' || selectedAlgorithm === 'PRIORITY_AGING') && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="border border-border rounded-md bg-surface p-4 space-y-3"
-            >
-              <div>
-                <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
-                  Priority Direction
+          {/* Round Robin / MLFQ Parameters */}
+          {(selectedAlgorithm === 'RR' ||
+            selectedAlgorithm === 'MLFQ') && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="border border-border rounded-md bg-surface p-4 space-y-2"
+              >
+                <label className="block text-xs font-semibold text-muted uppercase tracking-wide">
+                  {selectedAlgorithm === 'MLFQ'
+                    ? 'Q0 Time Quantum (Q1 = 2 × Q0)'
+                    : 'Time Quantum (Q)'}
                 </label>
-                <select
-                  value={priorityDirection}
-                  onChange={(e) => setPriorityDirection(e.target.value as PriorityDirection)}
-                  className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-foreground focus:border-accent focus:outline-none"
-                >
-                  <option value="lower">Lower number = Higher priority (Unix style)</option>
-                  <option value="higher">Higher number = Higher priority</option>
-                </select>
-              </div>
 
-              {selectedAlgorithm === 'PRIORITY_AGING' && (
+                <input
+                  type="number"
+                  min={1}
+                  value={timeQuantum}
+                  onChange={(e) =>
+                    setQuantum(
+                      Math.max(1, parseInt(e.target.value) || 1)
+                    )
+                  }
+                  className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
+                />
+
+                <p className="text-[11px] text-muted">
+                  {selectedAlgorithm === 'MLFQ'
+                    ? `Q0 uses Q=${timeQuantum}, Q1 uses Q=${timeQuantum * 2}, and Q2 uses FCFS. Priority boost occurs every 20 time units.`
+                    : 'A shorter quantum improves response time but may increase context-switch overhead.'}
+                </p>
+              </motion.div>
+            )}
+
+          {/* Priority Parameters */}
+          {(selectedAlgorithm === 'PRIORITY' ||
+            selectedAlgorithm === 'PRIORITY_AGING') && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="border border-border rounded-md bg-surface p-4 space-y-3"
+              >
                 <div>
                   <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
-                    Aging Interval (Time Units)
+                    Priority Direction
                   </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={agingInterval}
-                    onChange={(e) => setAgingInterval(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
-                  />
-                  <p className="text-[11px] text-muted mt-1">
-                    Every {agingInterval} units of waiting without CPU access, process priority increments by 1.
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          )}
 
-          {/* Run Button */}
+                  <select
+                    value={priorityDirection}
+                    onChange={(e) =>
+                      setPriorityDirection(
+                        e.target.value as PriorityDirection
+                      )
+                    }
+                    className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-foreground focus:border-accent focus:outline-none"
+                  >
+                    <option value="lower">
+                      Lower number = Higher priority (Unix style)
+                    </option>
+                    <option value="higher">
+                      Higher number = Higher priority
+                    </option>
+                  </select>
+                </div>
+
+                {selectedAlgorithm === 'PRIORITY_AGING' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+                      Aging Interval (Time Units)
+                    </label>
+
+                    <input
+                      type="number"
+                      min={1}
+                      value={agingInterval}
+                      onChange={(e) =>
+                        setAgingInterval(
+                          Math.max(
+                            1,
+                            parseInt(e.target.value) || 1
+                          )
+                        )
+                      }
+                      className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
+                    />
+
+                    <p className="text-[11px] text-muted mt-1">
+                      Every {agingInterval} units of waiting without CPU
+                      access, process priority changes by 1.
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+          {/* Run Simulation */}
           <button
             onClick={handleRunSimulation}
             disabled={processes.length === 0}
@@ -480,7 +632,7 @@ export default function NewSimulationPage() {
 
       {/* ==================== MODALS ==================== */}
 
-      {/* Add/Edit Process Modal */}
+      {/* Add/Edit Process */}
       <AnimatePresence>
         {showAddModal && (
           <AddProcessModal
@@ -503,14 +655,17 @@ export default function NewSimulationPage() {
         )}
       </AnimatePresence>
 
-      {/* Presets Modal */}
+      {/* Presets */}
       <AnimatePresence>
         {showPresets && (
-          <PresetsModal onClose={() => setShowPresets(false)} onSelect={handlePreset} />
+          <PresetsModal
+            onClose={() => setShowPresets(false)}
+            onSelect={handlePreset}
+          />
         )}
       </AnimatePresence>
 
-      {/* Saved Scenarios Modal */}
+      {/* Saved Scenarios */}
       <AnimatePresence>
         {showSavedScenarios && (
           <SavedScenariosModal
@@ -520,7 +675,7 @@ export default function NewSimulationPage() {
         )}
       </AnimatePresence>
 
-      {/* Save Scenario Modal */}
+      {/* Save Scenario */}
       <AnimatePresence>
         {showSaveModal && (
           <ModalOverlay onClose={() => setShowSaveModal(false)}>
@@ -534,26 +689,35 @@ export default function NewSimulationPage() {
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
                   <Bookmark size={18} className="text-accent" />
-                  Save Scenario to Local Library
+                  Save Scenario
                 </h3>
-                <button onClick={() => setShowSaveModal(false)} className="text-muted hover:text-foreground">
+
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  className="text-muted hover:text-foreground"
+                  aria-label="Close"
+                >
                   <X size={18} />
                 </button>
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                   Scenario Name
                 </label>
+
                 <input
                   type="text"
                   value={saveName}
                   onChange={(e) => setSaveName(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface text-foreground focus:border-accent focus:outline-none"
-                  placeholder="e.g. Lab 3 - MLFQ vs SRTF Convoy"
+                  placeholder="e.g. Lab 3 - MLFQ vs SRTF"
                 />
               </div>
+
               <p className="text-xs text-muted">
-                This scenario will be stored in your browser&apos;s local storage and can be recalled anytime or exported as JSON.
+                Saved scenarios are stored in your browser and can be
+                loaded later or exported as JSON.
               </p>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-border">
@@ -563,6 +727,7 @@ export default function NewSimulationPage() {
                 >
                   Cancel
                 </button>
+
                 <button
                   onClick={handleSaveScenarioSubmit}
                   disabled={!saveName.trim()}
@@ -576,15 +741,22 @@ export default function NewSimulationPage() {
         )}
       </AnimatePresence>
 
-      {/* History Modal */}
+      {/* History */}
       <AnimatePresence>
-        {showHistory && <SimulationHistoryModal onClose={() => setShowHistory(false)} />}
+        {showHistory && (
+          <SimulationHistoryModal
+            onClose={() => setShowHistory(false)}
+          />
+        )}
       </AnimatePresence>
 
-      {/* Randomizer Modal */}
+      {/* Randomizer */}
       <AnimatePresence>
         {showRandomizer && (
-          <RandomizerModal onClose={() => setShowRandomizer(false)} onGenerate={handleRandomize} />
+          <RandomizerModal
+            onClose={() => setShowRandomizer(false)}
+            onGenerate={handleRandomize}
+          />
         )}
       </AnimatePresence>
     </div>
@@ -606,35 +778,63 @@ function AddProcessModal({
   onAdd: (p: ProcessConfig) => void;
   onUpdate: (pid: string, p: Partial<ProcessConfig>) => void;
 }) {
-  const existing = editingPid ? processes.find((p) => p.pid === editingPid) : null;
+  const existing = editingPid
+    ? processes.find((p) => p.pid === editingPid)
+    : null;
 
-  const [pid, setPid] = useState(existing?.pid ?? `P${String(processes.length + 1).padStart(2, '0')}`);
-  const [arrival, setArrival] = useState(String(existing?.arrivalTime ?? 0));
-  const [burst, setBurst] = useState(String(existing?.burstTime ?? 1));
-  const [priority, setPriority] = useState(String(existing?.priority ?? 1));
+  const [pid, setPid] = useState(
+    existing?.pid ??
+    `P${String(processes.length + 1).padStart(2, '0')}`
+  );
+  const [arrival, setArrival] = useState(
+    String(existing?.arrivalTime ?? 0)
+  );
+  const [burst, setBurst] = useState(
+    String(existing?.burstTime ?? 1)
+  );
+  const [priority, setPriority] = useState(
+    String(existing?.priority ?? 1)
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
 
-    if (!pid.trim()) errs.pid = 'PID is required';
-    else if (!editingPid && processes.some((p) => p.pid === pid.trim())) errs.pid = 'PID must be unique';
+    if (!pid.trim()) {
+      errs.pid = 'PID is required';
+    } else if (
+      !editingPid &&
+      processes.some((p) => p.pid === pid.trim())
+    ) {
+      errs.pid = 'PID must be unique';
+    }
 
     const arrNum = parseInt(arrival);
-    if (isNaN(arrNum) || arrNum < 0) errs.arrival = 'Must be ≥ 0';
+
+    if (isNaN(arrNum) || arrNum < 0) {
+      errs.arrival = 'Must be ≥ 0';
+    }
 
     const burstNum = parseInt(burst);
-    if (isNaN(burstNum) || burstNum <= 0) errs.burst = 'Must be > 0';
+
+    if (isNaN(burstNum) || burstNum <= 0) {
+      errs.burst = 'Must be > 0';
+    }
 
     const priNum = parseInt(priority);
-    if (isNaN(priNum) || priNum < 0) errs.priority = 'Must be ≥ 0';
+
+    if (isNaN(priNum) || priNum < 0) {
+      errs.priority = 'Must be ≥ 0';
+    }
 
     setErrors(errs);
+
     return Object.keys(errs).length === 0;
   };
 
   const handleSubmit = () => {
     if (!validate()) return;
+
     if (editingPid) {
       onUpdate(editingPid, {
         pid: pid.trim(),
@@ -665,7 +865,12 @@ function AddProcessModal({
           <h3 className="font-semibold text-foreground">
             {editingPid ? `Edit ${editingPid}` : 'Add Process'}
           </h3>
-          <button onClick={onClose} className="text-muted hover:text-foreground" aria-label="Close">
+
+          <button
+            onClick={onClose}
+            className="text-muted hover:text-foreground"
+            aria-label="Close"
+          >
             <X size={18} />
           </button>
         </div>
@@ -679,6 +884,7 @@ function AddProcessModal({
               className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none disabled:opacity-50"
             />
           </FormField>
+
           <FormField label="Arrival Time" error={errors.arrival}>
             <input
               type="number"
@@ -688,6 +894,7 @@ function AddProcessModal({
               className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
             />
           </FormField>
+
           <FormField label="Burst Time" error={errors.burst}>
             <input
               type="number"
@@ -697,6 +904,7 @@ function AddProcessModal({
               className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
             />
           </FormField>
+
           <FormField label="Priority" error={errors.priority}>
             <input
               type="number"
@@ -715,6 +923,7 @@ function AddProcessModal({
           >
             Cancel
           </button>
+
           <button
             onClick={handleSubmit}
             className="px-4 py-1.5 text-sm font-medium bg-accent text-white rounded-md hover:bg-accent-hover"
@@ -746,11 +955,19 @@ function PresetsModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="font-semibold text-foreground">Standard Curriculum Presets</h3>
-          <button onClick={onClose} className="text-muted hover:text-foreground" aria-label="Close">
+          <h3 className="font-semibold text-foreground">
+            Standard Curriculum Presets
+          </h3>
+
+          <button
+            onClick={onClose}
+            className="text-muted hover:text-foreground"
+            aria-label="Close"
+          >
             <X size={18} />
           </button>
         </div>
+
         <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
           {PRESET_SCENARIOS.map((preset, i) => (
             <button
@@ -758,12 +975,19 @@ function PresetsModal({
               onClick={() => onSelect(i)}
               className="w-full text-left p-3 rounded-md border border-border hover:border-accent/40 hover:bg-accent/5 transition-colors"
             >
-              <p className="text-sm font-semibold text-foreground">{preset.name}</p>
-              <p className="text-xs text-muted mt-0.5">{preset.description}</p>
+              <p className="text-sm font-semibold text-foreground">
+                {preset.name}
+              </p>
+
+              <p className="text-xs text-muted mt-0.5">
+                {preset.description}
+              </p>
+
               <div className="flex gap-2 mt-1.5">
                 <span className="text-[10px] font-mono px-1.5 py-0.5 bg-surface-alt rounded text-foreground font-medium">
                   {preset.algorithm}
                 </span>
+
                 <span className="text-[10px] font-mono px-1.5 py-0.5 bg-surface-alt rounded text-muted">
                   {preset.processes.length} processes
                 </span>
@@ -785,7 +1009,9 @@ function SavedScenariosModal({
   onClose: () => void;
   onSelect: (sc: SavedScenario) => void;
 }) {
-  const [scenarios, setScenarios] = useState<SavedScenario[]>(() => getSavedScenarios());
+  const [scenarios, setScenarios] = useState<SavedScenario[]>(() =>
+    getSavedScenarios()
+  );
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -795,29 +1021,44 @@ function SavedScenariosModal({
 
   const handleExport = () => {
     const jsonStr = exportScenariosToJson(scenarios);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const blob = new Blob([jsonStr], {
+      type: 'application/json',
+    });
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+
     a.href = url;
-    a.download = `schedlab-scenarios-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `schedlab-scenarios-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
+
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
+
     if (!file) return;
+
     const reader = new FileReader();
+
     reader.onload = (ev) => {
       const content = ev.target?.result as string;
       const imported = importScenariosFromJson(content);
+
       if (imported.length > 0) {
         for (const sc of imported) {
           saveScenario(sc);
         }
+
         setScenarios(getSavedScenarios());
       }
     };
+
     reader.readAsText(file);
   };
 
@@ -833,9 +1074,17 @@ function SavedScenariosModal({
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Bookmark size={18} className="text-accent" />
-            <h3 className="font-semibold text-foreground">Scenario Library (LocalStorage)</h3>
+
+            <h3 className="font-semibold text-foreground">
+              Scenario Library
+            </h3>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-foreground">
+
+          <button
+            onClick={onClose}
+            className="text-muted hover:text-foreground"
+            aria-label="Close"
+          >
             <X size={18} />
           </button>
         </div>
@@ -843,10 +1092,10 @@ function SavedScenariosModal({
         <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
           {scenarios.length === 0 ? (
             <p className="text-xs text-muted text-center py-8">
-              No saved scenarios found. Click &quot;Save to Library&quot; to store your custom workloads.
+              No saved scenarios. Use &quot;Save to Library&quot; to store a
+              custom workload.
             </p>
           ) : (
-
             scenarios.map((sc) => (
               <div
                 key={sc.id}
@@ -855,17 +1104,32 @@ function SavedScenariosModal({
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">{sc.name}</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {sc.name}
+                    </p>
+
                     {sc.isCustom && (
                       <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-accent/15 text-accent">
                         Custom
                       </span>
                     )}
                   </div>
+
                   <div className="flex items-center gap-3 text-[11px] text-muted mt-1 font-mono">
-                    <span>Algo: <strong className="text-foreground">{sc.algorithm}</strong></span>
-                    <span>Procs: {sc.processes.length}</span>
-                    {sc.timeQuantum && <span>Q: {sc.timeQuantum}</span>}
+                    <span>
+                      Algo:{' '}
+                      <strong className="text-foreground">
+                        {sc.algorithm}
+                      </strong>
+                    </span>
+
+                    <span>
+                      Procs: {sc.processes.length}
+                    </span>
+
+                    {sc.timeQuantum && (
+                      <span>Q: {sc.timeQuantum}</span>
+                    )}
                   </div>
                 </div>
 
@@ -874,6 +1138,7 @@ function SavedScenariosModal({
                     onClick={(e) => handleDelete(sc.id, e)}
                     className="p-1 text-muted hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Delete scenario"
+                    aria-label={`Delete ${sc.name}`}
                   >
                     <Trash2 size={15} />
                   </button>
@@ -892,12 +1157,20 @@ function SavedScenariosModal({
               <Download size={12} />
               Export JSON
             </button>
+
             <label className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-muted hover:text-foreground border border-border rounded bg-surface hover:bg-surface-alt transition-colors cursor-pointer">
               <Upload size={12} />
               Import JSON
-              <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImport}
+                className="hidden"
+              />
             </label>
           </div>
+
           <button
             onClick={onClose}
             className="px-3 py-1 text-xs text-muted hover:text-foreground"
@@ -912,8 +1185,14 @@ function SavedScenariosModal({
 
 // ==================== Simulation History Modal ====================
 
-function SimulationHistoryModal({ onClose }: { onClose: () => void }) {
-  const [history, setHistory] = useState(getSimulationHistory());
+function SimulationHistoryModal({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
+  const [history, setHistory] = useState(
+    getSimulationHistory()
+  );
 
   const handleClear = () => {
     clearSimulationHistory();
@@ -932,9 +1211,17 @@ function SimulationHistoryModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <History size={18} className="text-accent" />
-            <h3 className="font-semibold text-foreground">Recent Simulation Runs</h3>
+
+            <h3 className="font-semibold text-foreground">
+              Recent Simulation Runs
+            </h3>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-foreground">
+
+          <button
+            onClick={onClose}
+            className="text-muted hover:text-foreground"
+            aria-label="Close"
+          >
             <X size={18} />
           </button>
         </div>
@@ -942,7 +1229,8 @@ function SimulationHistoryModal({ onClose }: { onClose: () => void }) {
         <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
           {history.length === 0 ? (
             <p className="text-xs text-muted text-center py-8">
-              No simulation runs logged yet. Launch a simulation to build up history.
+              No simulation runs yet. Launch a simulation to build
+              your run history.
             </p>
           ) : (
             history.map((run) => (
@@ -951,16 +1239,46 @@ function SimulationHistoryModal({ onClose }: { onClose: () => void }) {
                 className="p-3 rounded-md border border-border bg-surface hover:bg-surface-alt transition-colors space-y-1"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">{run.simulationName}</span>
+                  <span className="text-xs font-semibold text-foreground">
+                    {run.simulationName}
+                  </span>
+
                   <span className="text-[10px] font-mono text-muted">
-                    {new Date(run.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(run.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </span>
                 </div>
+
                 <div className="grid grid-cols-4 gap-2 text-[10px] font-mono text-muted pt-1">
-                  <span>Algo: <strong className="text-foreground">{run.algorithm}</strong></span>
-                  <span>Avg WT: <strong className="text-amber-500">{run.avgWaitingTime}</strong></span>
-                  <span>Fairness: <strong className="text-emerald-500">{run.fairnessIndex}</strong></span>
-                  <span>Switches: <strong className="text-foreground">{run.contextSwitches}</strong></span>
+                  <span>
+                    Algo:{' '}
+                    <strong className="text-foreground">
+                      {run.algorithm}
+                    </strong>
+                  </span>
+
+                  <span>
+                    Avg WT:{' '}
+                    <strong className="text-amber-500">
+                      {run.avgWaitingTime}
+                    </strong>
+                  </span>
+
+                  <span>
+                    Fairness:{' '}
+                    <strong className="text-emerald-500">
+                      {run.fairnessIndex}
+                    </strong>
+                  </span>
+
+                  <span>
+                    Switches:{' '}
+                    <strong className="text-foreground">
+                      {run.contextSwitches}
+                    </strong>
+                  </span>
                 </div>
               </div>
             ))
@@ -975,6 +1293,7 @@ function SimulationHistoryModal({ onClose }: { onClose: () => void }) {
           >
             Clear History
           </button>
+
           <button
             onClick={onClose}
             className="px-3 py-1 text-xs text-muted hover:text-foreground"
@@ -1022,11 +1341,19 @@ function RandomizerModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="font-semibold text-foreground">Random Workload Generator</h3>
-          <button onClick={onClose} className="text-muted hover:text-foreground" aria-label="Close">
+          <h3 className="font-semibold text-foreground">
+            Random Workload Generator
+          </h3>
+
+          <button
+            onClick={onClose}
+            className="text-muted hover:text-foreground"
+            aria-label="Close"
+          >
             <X size={18} />
           </button>
         </div>
+
         <div className="p-5 space-y-4">
           <FormField label="Number of Processes">
             <input
@@ -1034,71 +1361,110 @@ function RandomizerModal({
               min={1}
               max={20}
               value={count}
-              onChange={(e) => setCount(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+              onChange={(e) =>
+                setCount(
+                  Math.max(
+                    1,
+                    Math.min(
+                      20,
+                      parseInt(e.target.value) || 1
+                    )
+                  )
+                )
+              }
               className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
             />
           </FormField>
+
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Arrival Min">
               <input
                 type="number"
                 min={0}
                 value={arrMin}
-                onChange={(e) => setArrMin(parseInt(e.target.value) || 0)}
+                onChange={(e) =>
+                  setArrMin(parseInt(e.target.value) || 0)
+                }
                 className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
               />
             </FormField>
+
             <FormField label="Arrival Max">
               <input
                 type="number"
                 min={0}
                 value={arrMax}
-                onChange={(e) => setArrMax(parseInt(e.target.value) || 0)}
+                onChange={(e) =>
+                  setArrMax(parseInt(e.target.value) || 0)
+                }
                 className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
               />
             </FormField>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Burst Min">
               <input
                 type="number"
                 min={1}
                 value={burstMin}
-                onChange={(e) => setBurstMin(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) =>
+                  setBurstMin(
+                    Math.max(
+                      1,
+                      parseInt(e.target.value) || 1
+                    )
+                  )
+                }
                 className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
               />
             </FormField>
+
             <FormField label="Burst Max">
               <input
                 type="number"
                 min={1}
                 value={burstMax}
-                onChange={(e) => setBurstMax(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) =>
+                  setBurstMax(
+                    Math.max(
+                      1,
+                      parseInt(e.target.value) || 1
+                    )
+                  )
+                }
                 className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
               />
             </FormField>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Priority Min">
               <input
                 type="number"
                 min={0}
                 value={priMin}
-                onChange={(e) => setPriMin(parseInt(e.target.value) || 0)}
+                onChange={(e) =>
+                  setPriMin(parseInt(e.target.value) || 0)
+                }
                 className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
               />
             </FormField>
+
             <FormField label="Priority Max">
               <input
                 type="number"
                 min={0}
                 value={priMax}
-                onChange={(e) => setPriMax(parseInt(e.target.value) || 0)}
+                onChange={(e) =>
+                  setPriMax(parseInt(e.target.value) || 0)
+                }
                 className="w-full px-3 py-2 text-sm border border-border rounded-md bg-surface font-mono text-foreground focus:border-accent focus:outline-none"
               />
             </FormField>
           </div>
         </div>
+
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button
             onClick={onClose}
@@ -1106,8 +1472,19 @@ function RandomizerModal({
           >
             Cancel
           </button>
+
           <button
-            onClick={() => onGenerate(count, arrMin, arrMax, burstMin, burstMax, priMin, priMax)}
+            onClick={() =>
+              onGenerate(
+                count,
+                arrMin,
+                arrMax,
+                burstMin,
+                burstMax,
+                priMin,
+                priMax
+              )
+            }
             className="px-4 py-1.5 text-sm font-medium bg-accent text-white rounded-md hover:bg-accent-hover"
           >
             Generate Workload
@@ -1120,7 +1497,13 @@ function RandomizerModal({
 
 // ==================== Shared Components ====================
 
-function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function ModalOverlay({
+  children,
+  onClose,
+}: {
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -1134,11 +1517,23 @@ function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClos
   );
 }
 
-function FormField({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function FormField({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">{label}</label>
+      <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
+        {label}
+      </label>
+
       {children}
+
       {error && (
         <p className="flex items-center gap-1 mt-1 text-xs text-error">
           <AlertCircle size={12} />

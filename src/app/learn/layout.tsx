@@ -45,7 +45,11 @@ const LEARN_TOPICS = [
   },
 ];
 
-export default function LearnLayout({ children }: { children: React.ReactNode }) {
+export default function LearnLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
 
   const isCurrent = (slug: string) => {
@@ -62,42 +66,55 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
             <div className="p-4 rounded-xl bg-surface-alt border border-border">
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles size={16} className="text-accent" />
+
                 <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
                   Operating Systems Lab
                 </h2>
               </div>
-              <p className="text-xs text-muted mb-4">
-                Interactive curriculum covering process theory, concurrency, state machines, and scheduling dispatchers.
+
+              <p className="text-xs text-muted mb-4 leading-relaxed">
+                Interactive curriculum covering process theory,
+                concurrency, state machines, and scheduling dispatchers.
               </p>
 
-              <nav className="space-y-1" aria-label="Learn topics">
+              <nav
+                className="space-y-1"
+                aria-label="Learn topics"
+              >
                 {LEARN_TOPICS.map((topic) => {
                   const Icon = topic.icon;
                   const active = isCurrent(topic.slug);
-                  const href = topic.slug ? `/learn/${topic.slug}` : '/learn';
+                  const href = topic.slug
+                    ? `/learn/${topic.slug}`
+                    : '/learn';
 
                   return (
                     <Link
                       key={topic.slug}
                       href={href}
-                      className={`group flex items-start gap-3 p-2.5 rounded-lg text-xs transition-all ${
-                        active
-                          ? 'bg-accent text-white font-medium shadow-xs'
-                          : 'text-muted hover:text-foreground hover:bg-surface-elevated'
-                      }`}
+                      className={`group flex items-start gap-3 p-2.5 rounded-lg text-xs transition-colors ${active
+                          ? 'bg-accent text-white font-medium shadow-sm'
+                          : 'text-muted hover:text-foreground hover:bg-surface'
+                        }`}
                     >
                       <Icon
                         size={16}
-                        className={`shrink-0 mt-0.5 ${
-                          active ? 'text-white' : 'text-accent group-hover:text-accent'
-                        }`}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold truncate">{topic.title}</div>
-                        <div
-                          className={`text-[11px] truncate ${
-                            active ? 'text-white/80' : 'text-muted'
+                        className={`shrink-0 mt-0.5 ${active
+                            ? 'text-white'
+                            : 'text-accent'
                           }`}
+                      />
+
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold truncate">
+                          {topic.title}
+                        </div>
+
+                        <div
+                          className={`text-[11px] truncate ${active
+                              ? 'text-white/80'
+                              : 'text-muted'
+                            }`}
                         >
                           {topic.description}
                         </div>
@@ -108,23 +125,31 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
               </nav>
             </div>
 
-            {/* Quick action to simulator */}
+            {/* Quick Action to Simulator */}
             <div className="p-4 rounded-xl bg-accent/10 border border-accent/20 text-xs space-y-2">
-              <span className="font-semibold text-accent block">Ready to experiment?</span>
-              <p className="text-muted text-[11px]">
-                Test these concepts with real workloads inside the interactive simulation engine.
+              <span className="font-semibold text-accent block">
+                Ready to experiment?
+              </span>
+
+              <p className="text-muted text-[11px] leading-relaxed">
+                Test these concepts with real workloads inside the
+                interactive simulation engine.
               </p>
+
               <Link
                 href="/simulator/new"
                 className="inline-flex items-center gap-1 text-accent font-medium hover:underline text-xs"
               >
-                Launch Simulator <ChevronRight size={13} />
+                Launch Simulator
+                <ChevronRight size={13} />
               </Link>
             </div>
           </aside>
 
           {/* Main Topic Content */}
-          <main className="lg:col-span-3 min-w-0">{children}</main>
+          <main className="lg:col-span-3 min-w-0">
+            {children}
+          </main>
         </div>
       </div>
     </div>

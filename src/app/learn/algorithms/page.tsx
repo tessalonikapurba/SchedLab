@@ -43,7 +43,8 @@ const ALGORITHMS_DATA: AlgoDetail[] = [
     type: 'FCFS',
     title: 'First-Come, First-Served (FCFS)',
     preemptive: false,
-    tagline: 'Non-preemptive FIFO queue ordering based strictly on arrival time.',
+    tagline:
+      'Non-preemptive FIFO queue ordering based strictly on arrival time.',
     description:
       'The simplest scheduling algorithm. Processes are allocated the CPU in the exact order in which they request it, managed through a standard FIFO queue. When a process enters the ready queue, its PCB is linked onto the tail of the queue. When the CPU becomes free, it is allocated to the process at the head of the queue.',
     logic: [
@@ -74,7 +75,8 @@ const ALGORITHMS_DATA: AlgoDetail[] = [
     type: 'SJF',
     title: 'Shortest Job First (SJF)',
     preemptive: false,
-    tagline: 'Non-preemptive policy that schedules the available process with the shortest CPU burst.',
+    tagline:
+      'Non-preemptive policy that schedules the available process with the shortest CPU burst.',
     description:
       'SJF associates with each process the length of its next CPU burst. When the CPU becomes available, it is assigned to the process that has the smallest CPU burst. If the next CPU bursts of two processes are the same, FCFS scheduling is used to break the tie.',
     logic: [
@@ -95,7 +97,8 @@ const ALGORITHMS_DATA: AlgoDetail[] = [
     ],
     formulaTitle: 'Exponential Smoothing Burst Prediction',
     formula: 'τ_{n+1} = α · t_n + (1 − α) · τ_n',
-    formulaNote: 'Where t_n is actual recent burst length and α (typically 0.5) controls history weighting.',
+    formulaNote:
+      'Where t_n is actual recent burst length and α (typically 0.5) controls history weighting.',
     phenomenon: {
       name: 'Starvation (Indefinite Blocking)',
       desc: 'A long process can wait indefinitely if a continuous stream of shorter processes arrives in the ready queue.',
@@ -105,7 +108,8 @@ const ALGORITHMS_DATA: AlgoDetail[] = [
     type: 'SRTF',
     title: 'Shortest Remaining Time First (SRTF)',
     preemptive: true,
-    tagline: 'Preemptive counterpart of SJF that preempts if a newly arrived job has a shorter remaining burst.',
+    tagline:
+      'Preemptive counterpart of SJF that preempts if a newly arrived job has a shorter remaining burst.',
     description:
       'SRTF continuously evaluates the remaining burst time of the currently running process against any newly arriving processes. If an arriving process has a burst time shorter than the remaining execution time of the current process, the current process is preempted and returned to the ready queue.',
     logic: [
@@ -136,7 +140,8 @@ const ALGORITHMS_DATA: AlgoDetail[] = [
     type: 'PRIORITY',
     title: 'Priority Scheduling',
     preemptive: false,
-    tagline: 'Schedules processes based on integer priority rankings assigned by the OS or user.',
+    tagline:
+      'Schedules processes based on integer priority rankings assigned by the OS or user.',
     description:
       'A priority number (integer) is associated with each process. The CPU is allocated to the process with the highest priority. Equal-priority processes are scheduled in FCFS order. Priority can be defined either internally (memory limits, open files) or externally (importance, funds paid, user ranking).',
     logic: [
@@ -157,7 +162,8 @@ const ALGORITHMS_DATA: AlgoDetail[] = [
     ],
     formulaTitle: 'Aging Solution to Starvation',
     formula: 'Priority(P) = BasePriority − k · (CurrentTime − ArrivalTime)',
-    formulaNote: 'Gradually elevates the priority of processes waiting in the queue for long periods.',
+    formulaNote:
+      'Gradually elevates the priority of processes waiting in the queue for long periods.',
     phenomenon: {
       name: 'Priority Inversion',
       desc: 'Occurs when a high-priority task is indirectly preempted by a lower-priority task holding a shared resource, leading to system deadline misses (e.g. Mars Pathfinder anomaly).',
@@ -167,7 +173,8 @@ const ALGORITHMS_DATA: AlgoDetail[] = [
     type: 'RR',
     title: 'Round Robin (RR)',
     preemptive: true,
-    tagline: 'Time-sharing policy where each process is given a small slice of CPU time (quantum).',
+    tagline:
+      'Time-sharing policy where each process is given a small slice of CPU time (quantum).',
     description:
       'The Round Robin (RR) scheduling algorithm is designed especially for time-sharing systems. A small unit of time, called a time quantum or time slice (typically 10 to 100 milliseconds), is defined. The ready queue is treated as a circular FIFO queue. The CPU scheduler goes around the ready queue, allocating the CPU to each process for a time interval of up to 1 time quantum.',
     logic: [
@@ -188,7 +195,8 @@ const ALGORITHMS_DATA: AlgoDetail[] = [
     ],
     formulaTitle: 'Response Time Bound & 80/20 Rule',
     formula: 'Max Response Wait ≤ (N − 1) · q',
-    formulaNote: 'Rule of Thumb: 80% of CPU bursts should be shorter than the time quantum q.',
+    formulaNote:
+      'Rule of Thumb: 80% of CPU bursts should be shorter than the time quantum q.',
     phenomenon: {
       name: 'Quantum Sensitivity Trade-off',
       desc: 'If q is 1ms and context switch takes 0.1ms, 10% of CPU capacity is wasted on pure overhead. If q is 1000ms, responsiveness becomes sluggish.',
@@ -198,22 +206,40 @@ const ALGORITHMS_DATA: AlgoDetail[] = [
 
 export default function AlgorithmsPage() {
   const router = useRouter();
-  const [selectedAlgo, setSelectedAlgo] = useState<AlgorithmType>('FCFS');
-  const { setProcesses, setAlgorithm, setQuantum, initializeSimulation } = useSimulationStore();
+  const [selectedAlgo, setSelectedAlgo] =
+    useState<AlgorithmType>('FCFS');
 
-  const current = ALGORITHMS_DATA.find((a) => a.type === selectedAlgo) || ALGORITHMS_DATA[0];
+  const {
+    setProcesses,
+    setAlgorithm,
+    setQuantum,
+    initializeSimulation,
+  } = useSimulationStore();
+
+  const current =
+    ALGORITHMS_DATA.find((a) => a.type === selectedAlgo) ||
+    ALGORITHMS_DATA[0];
 
   const handleLaunchSimulator = (algo: AlgorithmType) => {
-    // Choose appropriate preset
     let preset = PRESET_SCENARIOS[0];
-    if (algo === 'FCFS') preset = PRESET_SCENARIOS[1]; // Convoy effect demo
-    else if (algo === 'SJF' || algo === 'SRTF') preset = PRESET_SCENARIOS[2]; // SJF demo
-    else if (algo === 'PRIORITY') preset = PRESET_SCENARIOS[4]; // Priority demo
-    else if (algo === 'RR') preset = PRESET_SCENARIOS[3]; // RR demo
+
+    if (algo === 'FCFS') {
+      preset = PRESET_SCENARIOS[1];
+    } else if (algo === 'SJF' || algo === 'SRTF') {
+      preset = PRESET_SCENARIOS[2];
+    } else if (algo === 'PRIORITY') {
+      preset = PRESET_SCENARIOS[4];
+    } else if (algo === 'RR') {
+      preset = PRESET_SCENARIOS[3];
+    }
 
     setProcesses(preset.processes);
     setAlgorithm(algo);
-    if (algo === 'RR') setQuantum(2);
+
+    if (algo === 'RR') {
+      setQuantum(2);
+    }
+
     initializeSimulation();
     router.push('/simulator/live');
   };
@@ -227,11 +253,16 @@ export default function AlgorithmsPage() {
           <span>•</span>
           <span>Algorithmic Deep Dive</span>
         </div>
+
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
           CPU Scheduling Algorithms
         </h1>
+
         <p className="text-sm text-muted mt-2 leading-relaxed max-w-3xl">
-          Select an algorithm below to analyze its mathematical formulas, execution rules, preemption conditions, classical pitfalls (starvation, convoy effect, priority inversion), and simulate it live.
+          Select an algorithm below to analyze its mathematical formulas,
+          execution rules, preemption conditions, classical pitfalls
+          (starvation, convoy effect, priority inversion), and simulate it
+          live.
         </p>
       </div>
 
@@ -241,11 +272,10 @@ export default function AlgorithmsPage() {
           <button
             key={algo.type}
             onClick={() => setSelectedAlgo(algo.type)}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              selectedAlgo === algo.type
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${selectedAlgo === algo.type
                 ? 'bg-accent text-white shadow-sm'
-                : 'bg-surface-alt border border-border text-muted hover:text-foreground hover:bg-surface-elevated'
-            }`}
+                : 'bg-surface-alt border border-border text-muted hover:text-foreground hover:bg-surface'
+              }`}
           >
             {algo.type}
           </button>
@@ -265,18 +295,28 @@ export default function AlgorithmsPage() {
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span
-                className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                  current.preemptive
+                className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${current.preemptive
                     ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                     : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                }`}
+                  }`}
               >
-                {current.preemptive ? 'Preemptive' : 'Non-Preemptive'}
+                {current.preemptive
+                  ? 'Preemptive'
+                  : 'Non-Preemptive'}
               </span>
-              <span className="text-xs text-muted font-mono">{current.type}</span>
+
+              <span className="text-xs text-muted font-mono">
+                {current.type}
+              </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground">{current.title}</h2>
-            <p className="text-xs text-muted max-w-2xl">{current.tagline}</p>
+
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+              {current.title}
+            </h2>
+
+            <p className="text-xs text-muted max-w-2xl">
+              {current.tagline}
+            </p>
           </div>
 
           <button
@@ -295,12 +335,16 @@ export default function AlgorithmsPage() {
               <GitBranch size={16} className="text-accent" />
               How It Works
             </h3>
-            <p className="text-xs text-muted leading-relaxed">{current.description}</p>
+
+            <p className="text-xs text-muted leading-relaxed">
+              {current.description}
+            </p>
 
             <div className="pt-2">
               <span className="text-[11px] font-semibold text-foreground block mb-2">
-                Execution Steps & Logic:
+                Execution Steps &amp; Logic:
               </span>
+
               <ol className="list-decimal pl-4 space-y-1 text-xs text-muted">
                 {current.logic.map((step, idx) => (
                   <li key={idx}>{step}</li>
@@ -313,21 +357,33 @@ export default function AlgorithmsPage() {
           <div className="space-y-4">
             <div className="p-5 rounded-xl bg-surface-alt border border-border space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground">{current.formulaTitle}</span>
+                <span className="text-xs font-bold text-foreground">
+                  {current.formulaTitle}
+                </span>
+
                 <Clock size={15} className="text-accent" />
               </div>
+
               <div className="p-2.5 rounded-lg bg-surface border border-border font-mono text-accent text-xs font-semibold">
                 {current.formula}
               </div>
-              <p className="text-[11px] text-muted">{current.formulaNote}</p>
+
+              <p className="text-[11px] text-muted">
+                {current.formulaNote}
+              </p>
             </div>
 
             <div className="p-5 rounded-xl bg-surface-alt border border-amber-500/30 space-y-2">
               <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
                 <AlertTriangle size={15} />
-                <span>Classic Vulnerability: {current.phenomenon.name}</span>
+                <span>
+                  Classic Vulnerability: {current.phenomenon.name}
+                </span>
               </div>
-              <p className="text-xs text-muted leading-relaxed">{current.phenomenon.desc}</p>
+
+              <p className="text-xs text-muted leading-relaxed">
+                {current.phenomenon.desc}
+              </p>
             </div>
           </div>
         </div>
@@ -339,6 +395,7 @@ export default function AlgorithmsPage() {
               <CheckCircle2 size={15} />
               Advantages
             </h4>
+
             <ul className="space-y-1.5 text-xs text-muted">
               {current.pros.map((pro, idx) => (
                 <li key={idx} className="flex items-start gap-2">
@@ -352,8 +409,9 @@ export default function AlgorithmsPage() {
           <div className="p-5 rounded-xl bg-surface-alt border border-border space-y-2">
             <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
               <AlertTriangle size={15} />
-              Disadvantages & Trade-offs
+              Disadvantages &amp; Trade-offs
             </h4>
+
             <ul className="space-y-1.5 text-xs text-muted">
               {current.cons.map((con, idx) => (
                 <li key={idx} className="flex items-start gap-2">
@@ -373,13 +431,16 @@ export default function AlgorithmsPage() {
             <Scale size={18} className="text-accent" />
             Compare all 5 algorithms side-by-side
           </h4>
+
           <p className="text-xs text-muted mt-0.5">
-            Want to see which algorithm achieves the lowest turnaround time on your custom workload?
+            Want to see which algorithm achieves the lowest turnaround time on
+            your custom workload?
           </p>
         </div>
+
         <Link
           href="/compare"
-          className="flex items-center gap-1.5 px-4 py-2 bg-surface hover:bg-surface-elevated border border-border rounded-xl text-xs font-semibold text-foreground transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-4 py-2 bg-surface hover:bg-surface border border-border rounded-xl text-xs font-semibold text-foreground transition-colors shrink-0"
         >
           <span>Open Comparison Lab</span>
           <ArrowRight size={14} />
