@@ -40,8 +40,8 @@ export default function LiveSimulationPage() {
 
   if (!store.engine) {
     return (
-      <div className="min-h-screen bg-sim-bg flex items-center justify-center">
-        <p className="text-sim-muted text-sm">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted text-sm">
           Initializing simulation…
         </p>
       </div>
@@ -49,22 +49,22 @@ export default function LiveSimulationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-sim-bg text-sim-text pb-12">
+    <div className="min-h-screen bg-background text-foreground pb-12 transition-colors">
       {/* Header */}
-      <div className="border-b border-sim-border px-4 py-3">
+      <div className="border-b border-border px-4 py-3 bg-surface">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold text-sim-text">
+              <h1 className="text-sm font-bold text-foreground">
                 {store.simulationName}
               </h1>
 
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold">
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-accent/15 text-accent font-semibold">
                 {ALGORITHM_DISPLAY_NAMES[store.selectedAlgorithm]}
               </span>
             </div>
 
-            <p className="text-xs text-sim-muted font-mono mt-0.5">
+            <p className="text-xs text-muted font-mono mt-0.5">
               {store.selectedAlgorithm === 'RR' &&
                 `Time Quantum: Q=${store.timeQuantum}`}
 
@@ -80,19 +80,17 @@ export default function LiveSimulationPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-sim-muted">
+          <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-muted">
             <button
               onClick={() => setExplainMode(!explainMode)}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${explainMode
-                  ? 'bg-accent/20 text-accent border border-accent/40'
-                  : 'bg-sim-surface text-sim-muted border border-sim-border hover:text-sim-text'
+                ? 'bg-accent/15 text-accent border border-accent/30'
+                : 'bg-surface-alt text-muted border border-border hover:text-foreground'
                 }`}
             >
               <Sparkles
                 size={13}
-                className={
-                  explainMode ? 'text-accent' : 'text-sim-muted'
-                }
+                className={explainMode ? 'text-accent' : 'text-muted'}
               />
 
               Explain as You Simulate:{' '}
@@ -102,8 +100,8 @@ export default function LiveSimulationPage() {
             <span className="flex items-center gap-1">
               <Clock size={13} />
 
-              T ={' '}
-              <span className="text-sim-text font-bold text-sm">
+              T={' '}
+              <span className="text-foreground font-bold text-sm">
                 {store.currentTime}
               </span>
             </span>
@@ -182,14 +180,14 @@ function SimulationControls() {
   };
 
   return (
-    <div className="border-b border-sim-border bg-sim-surface px-4 py-2.5">
+    <div className="border-b border-border bg-surface px-4 py-2.5 transition-colors">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
         {/* Playback */}
         <div className="flex items-center gap-1.5">
           {simulationStatus === 'RUNNING' ? (
             <button
               onClick={pause}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded text-xs font-semibold hover:bg-amber-500/30 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 rounded text-xs font-semibold hover:bg-amber-500/25 transition-colors"
             >
               <Pause size={14} />
               Pause
@@ -214,7 +212,7 @@ function SimulationControls() {
               simulationStatus === 'COMPLETED' ||
               simulationStatus === 'RUNNING'
             }
-            className="flex items-center gap-1 px-3 py-1.5 bg-sim-bg-deep border border-sim-border text-sim-text rounded text-xs font-medium hover:bg-sim-border/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-3 py-1.5 bg-surface-alt border border-border text-foreground rounded text-xs font-medium hover:bg-surface transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             title="Step 1 time unit forward"
           >
             <SkipForward size={14} />
@@ -223,7 +221,7 @@ function SimulationControls() {
 
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-sim-muted hover:text-sim-text rounded text-xs font-medium hover:bg-sim-border/30 transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-muted hover:text-foreground rounded text-xs font-medium hover:bg-surface-alt transition-colors"
             title="Reset Simulation"
           >
             <RotateCcw size={14} />
@@ -233,7 +231,7 @@ function SimulationControls() {
 
         {/* Speed */}
         <div className="flex items-center gap-1 text-xs">
-          <span className="text-sim-muted mr-1">
+          <span className="text-muted mr-1">
             Speed:
           </span>
 
@@ -242,8 +240,8 @@ function SimulationControls() {
               key={speed}
               onClick={() => setSpeed(speed)}
               className={`px-2 py-1 rounded font-mono font-bold transition-colors ${simulationSpeed === speed
-                  ? 'bg-accent text-white'
-                  : 'text-sim-muted hover:text-sim-text hover:bg-sim-bg-deep'
+                ? 'bg-accent text-white'
+                : 'text-muted hover:text-foreground hover:bg-surface-alt'
                 }`}
             >
               {speed}x
@@ -255,16 +253,16 @@ function SimulationControls() {
         <div className="flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full ${simulationStatus === 'RUNNING'
-                ? 'bg-emerald-400 animate-pulse'
-                : simulationStatus === 'PAUSED'
-                  ? 'bg-amber-400'
-                  : simulationStatus === 'COMPLETED'
-                    ? 'bg-blue-400'
-                    : 'bg-sim-muted'
+              ? 'bg-emerald-500 dark:bg-emerald-400 animate-pulse'
+              : simulationStatus === 'PAUSED'
+                ? 'bg-amber-500 dark:bg-amber-400'
+                : simulationStatus === 'COMPLETED'
+                  ? 'bg-blue-500 dark:bg-blue-400'
+                  : 'bg-muted'
               }`}
           />
 
-          <span className="text-xs font-mono font-semibold uppercase text-sim-muted">
+          <span className="text-xs font-mono font-semibold uppercase text-muted">
             {simulationStatus}
           </span>
         </div>
@@ -293,7 +291,7 @@ function ExplainAsYouSimulatePanel() {
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-4 rounded-lg bg-sim-surface border border-accent/30 relative overflow-hidden"
+      className="p-4 rounded-lg bg-surface border border-accent/30 relative overflow-hidden"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1.5 flex-1">
@@ -303,28 +301,28 @@ function ExplainAsYouSimulatePanel() {
               Explain as You Simulate
             </span>
 
-            <span className="text-[10px] text-sim-muted font-mono">
+            <span className="text-[10px] text-muted font-mono">
               T={currentTime}
             </span>
 
             {latestEvent?.category && (
-              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-sim-bg-deep text-sim-text border border-sim-border">
+              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-surface-alt text-foreground border border-border">
                 {latestEvent.category}
               </span>
             )}
           </div>
 
-          <p className="text-xs text-sim-text font-medium leading-relaxed">
+          <p className="text-xs text-foreground font-medium leading-relaxed">
             {latestEvent?.explanation ||
               latestEvent?.message ||
               'Simulation ready. Click Play or Step to observe the scheduling decisions and queue changes.'}
           </p>
 
           {schedulerDecision?.educationalTip && (
-            <div className="flex items-start gap-1.5 pt-1 text-[11px] text-sim-muted italic">
+            <div className="flex items-start gap-1.5 pt-1 text-[11px] text-muted italic">
               <Info
                 size={13}
-                className="text-blue-400 shrink-0 mt-0.5"
+                className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5"
               />
 
               <span>
@@ -335,23 +333,23 @@ function ExplainAsYouSimulatePanel() {
         </div>
 
         {/* Live Status */}
-        <div className="hidden sm:flex items-center gap-4 bg-sim-bg-deep/80 p-2.5 rounded border border-sim-border text-center shrink-0">
+        <div className="hidden sm:flex items-center gap-4 bg-surface-alt p-2.5 rounded border border-border text-center shrink-0">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-sim-muted">
+            <p className="text-[10px] uppercase tracking-wider text-muted">
               Ready Queue
             </p>
 
-            <p className="text-sm font-bold font-mono text-amber-400">
+            <p className="text-sm font-bold font-mono text-amber-600 dark:text-amber-400">
               {readyQueue.length} jobs
             </p>
           </div>
 
-          <div className="border-l border-sim-border pl-3">
-            <p className="text-[10px] uppercase tracking-wider text-sim-muted">
+          <div className="border-l border-border pl-3">
+            <p className="text-[10px] uppercase tracking-wider text-muted">
               Active CPU
             </p>
 
-            <p className="text-sm font-bold font-mono text-emerald-400">
+            <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
               {currentProcess || 'IDLE'}
             </p>
           </div>
@@ -381,14 +379,14 @@ function CpuPanel() {
     : 0;
 
   return (
-    <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden">
-      <div className="px-3 py-2 border-b border-sim-border flex items-center justify-between bg-sim-bg-deep">
-        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider flex items-center gap-1.5">
+    <div className="rounded-md border border-border bg-surface overflow-hidden">
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-surface-alt">
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
           <Cpu size={13} className="text-accent" />
           CPU Execution Core
         </span>
 
-        <span className="text-[10px] font-mono text-sim-muted">
+        <span className="text-[10px] font-mono text-muted">
           Single Core
         </span>
       </div>
@@ -410,37 +408,37 @@ function CpuPanel() {
               {proc.pid}
             </div>
 
-            <p className="text-xs font-semibold text-sim-text">
+            <p className="text-xs font-semibold text-foreground">
               Running
             </p>
 
-            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-sim-border text-xs">
+            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border text-xs">
               <div>
-                <span className="text-[10px] text-sim-muted">
+                <span className="text-[10px] text-muted">
                   Remaining
                 </span>
 
-                <p className="font-mono font-bold text-sim-text">
+                <p className="font-mono font-bold text-foreground">
                   {remaining}
                 </p>
               </div>
 
               <div>
-                <span className="text-[10px] text-sim-muted">
+                <span className="text-[10px] text-muted">
                   Priority
                 </span>
 
-                <p className="font-mono font-bold text-sim-text">
+                <p className="font-mono font-bold text-foreground">
                   {proc.priority}
                 </p>
               </div>
 
               <div>
-                <span className="text-[10px] text-sim-muted">
+                <span className="text-[10px] text-muted">
                   Burst
                 </span>
 
-                <p className="font-mono font-bold text-sim-text">
+                <p className="font-mono font-bold text-foreground">
                   {proc.burstTime}
                 </p>
               </div>
@@ -448,11 +446,11 @@ function CpuPanel() {
           </motion.div>
         ) : (
           <div className="text-center py-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-lg bg-sim-bg-deep border border-sim-border text-sim-muted mb-2">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-lg bg-surface-alt border border-border text-muted mb-2">
               <Cpu size={24} />
             </div>
 
-            <p className="text-xs text-sim-muted font-semibold">
+            <p className="text-xs text-muted font-semibold">
               CPU IDLE
             </p>
           </div>
@@ -476,14 +474,14 @@ function ReadyQueuePanel() {
   } = useSimulationStore();
 
   return (
-    <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden">
-      <div className="px-3 py-2 border-b border-sim-border flex items-center justify-between bg-sim-bg-deep">
-        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider flex items-center gap-1.5">
-          <Timer size={13} className="text-amber-400" />
+    <div className="rounded-md border border-border bg-surface overflow-hidden">
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-surface-alt">
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Timer size={13} className="text-amber-500 dark:text-amber-400" />
           Ready Queue
         </span>
 
-        <span className="text-[10px] font-mono text-sim-muted">
+        <span className="text-[10px] font-mono text-muted">
           {readyQueue.length} items
         </span>
       </div>
@@ -505,9 +503,9 @@ function ReadyQueuePanel() {
                 return (
                   <div
                     key={level}
-                    className="p-2 rounded bg-sim-bg-deep border border-sim-border/80"
+                    className="p-2 rounded bg-surface-alt border border-border"
                   >
-                    <div className="flex justify-between items-center text-[10px] font-mono text-sim-muted mb-1.5">
+                    <div className="flex justify-between items-center text-[10px] font-mono text-muted mb-1.5">
                       <span className="font-bold text-accent">
                         {label}
                       </span>
@@ -518,7 +516,7 @@ function ReadyQueuePanel() {
                     </div>
 
                     {queue.length === 0 ? (
-                      <span className="text-[10px] text-sim-muted italic">
+                      <span className="text-[10px] text-muted italic">
                         Empty
                       </span>
                     ) : (
@@ -543,7 +541,7 @@ function ReadyQueuePanel() {
             )}
           </div>
         ) : readyQueue.length === 0 ? (
-          <p className="text-xs text-sim-muted text-center py-3">
+          <p className="text-xs text-muted text-center py-3">
             Queue is empty
           </p>
         ) : (
@@ -560,7 +558,7 @@ function ReadyQueuePanel() {
                     initial={{ opacity: 0, x: -15 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 15 }}
-                    className="flex items-center justify-between p-2 rounded bg-sim-bg-deep border border-sim-border"
+                    className="flex items-center justify-between p-2 rounded bg-surface-alt border border-border"
                   >
                     <div className="flex items-center gap-2">
                       <div
@@ -571,15 +569,15 @@ function ReadyQueuePanel() {
                         }}
                       />
 
-                      <span className="font-mono text-xs font-bold text-sim-text">
+                      <span className="font-mono text-xs font-bold text-foreground">
                         {pid}
                       </span>
                     </div>
 
-                    <div className="flex gap-3 text-[10px] text-sim-muted">
+                    <div className="flex gap-3 text-[10px] text-muted">
                       <span>
                         Rem:{' '}
-                        <span className="font-mono text-sim-text">
+                        <span className="font-mono text-foreground">
                           {remainingTimes[pid]}
                         </span>
                       </span>
@@ -587,7 +585,7 @@ function ReadyQueuePanel() {
                       {proc && (
                         <span>
                           Pri:{' '}
-                          <span className="font-mono text-sim-text">
+                          <span className="font-mono text-foreground">
                             {proc.priority}
                           </span>
                         </span>
@@ -612,10 +610,10 @@ function SchedulerDecisionPanel() {
   const { schedulerDecision } = useSimulationStore();
 
   return (
-    <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden">
-      <div className="px-3 py-2 border-b border-sim-border bg-sim-bg-deep flex items-center justify-between">
-        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider flex items-center gap-1.5">
-          <Info size={13} className="text-blue-400" />
+    <div className="rounded-md border border-border bg-surface overflow-hidden">
+      <div className="px-3 py-2 border-b border-border bg-surface-alt flex items-center justify-between">
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Info size={13} className="text-blue-600 dark:text-blue-400" />
           Scheduler Decision
         </span>
       </div>
@@ -623,7 +621,7 @@ function SchedulerDecisionPanel() {
       <div className="p-3 space-y-2">
         {schedulerDecision ? (
           <>
-            <p className="text-xs text-sim-text leading-relaxed">
+            <p className="text-xs text-foreground leading-relaxed">
               <strong className="text-accent font-mono">
                 {schedulerDecision.pid}
               </strong>{' '}
@@ -632,8 +630,8 @@ function SchedulerDecisionPanel() {
 
             {schedulerDecision.candidates &&
               schedulerDecision.candidates.length > 0 && (
-                <div className="pt-2 border-t border-sim-border/80">
-                  <span className="text-[10px] font-semibold text-sim-muted uppercase">
+                <div className="pt-2 border-t border-border">
+                  <span className="text-[10px] font-semibold text-muted uppercase">
                     Evaluated Candidates (
                     {schedulerDecision.candidates.length}):
                   </span>
@@ -644,9 +642,9 @@ function SchedulerDecisionPanel() {
                         <div
                           key={candidate.pid}
                           className={`flex items-center justify-between px-2 py-1 rounded text-[11px] font-mono ${candidate.pid ===
-                              schedulerDecision.pid
-                              ? 'bg-accent/15 text-accent font-bold border border-accent/30'
-                              : 'bg-sim-bg-deep text-sim-muted'
+                            schedulerDecision.pid
+                            ? 'bg-accent/10 text-accent font-bold border border-accent/30'
+                            : 'bg-surface-alt text-muted'
                             }`}
                         >
                           <span>{candidate.pid}</span>
@@ -659,7 +657,7 @@ function SchedulerDecisionPanel() {
               )}
           </>
         ) : (
-          <p className="text-xs text-sim-muted">
+          <p className="text-xs text-muted">
             No scheduling decision recorded yet. Use Step or Play to start the simulation.
           </p>
         )}
@@ -681,11 +679,11 @@ function ProcessStatesPanel() {
   } = useSimulationStore();
 
   return (
-    <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden h-full">
-      <div className="px-3 py-2 border-b border-sim-border bg-sim-bg-deep flex items-center gap-1.5">
-        <Zap size={13} className="text-yellow-400" />
+    <div className="rounded-md border border-border bg-surface overflow-hidden h-full">
+      <div className="px-3 py-2 border-b border-border bg-surface-alt flex items-center gap-1.5">
+        <Zap size={13} className="text-yellow-600 dark:text-yellow-400" />
 
-        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider">
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
           Process States
         </span>
       </div>
@@ -709,8 +707,8 @@ function ProcessStatesPanel() {
                 )
               }
               className={`w-full flex items-center justify-between p-2.5 rounded border transition-colors text-left ${isSelected
-                  ? 'border-accent bg-accent/10'
-                  : 'border-sim-border bg-sim-bg-deep hover:border-sim-border/80'
+                ? 'border-accent bg-accent/10'
+                : 'border-border bg-surface-alt hover:bg-surface'
                 }`}
               layout
             >
@@ -723,7 +721,7 @@ function ProcessStatesPanel() {
                   }}
                 />
 
-                <span className="font-mono text-xs font-bold text-sim-text">
+                <span className="font-mono text-xs font-bold text-foreground">
                   {proc.pid}
                 </span>
               </div>
@@ -767,14 +765,14 @@ function ProcessInspector() {
 
   if (!proc) {
     return (
-      <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden h-full flex items-center justify-center p-6 text-center">
+      <div className="rounded-md border border-border bg-surface overflow-hidden h-full flex items-center justify-center p-6 text-center">
         <div>
           <Activity
             size={24}
-            className="text-sim-muted mx-auto mb-2 opacity-50"
+            className="text-muted mx-auto mb-2 opacity-50"
           />
 
-          <p className="text-xs text-sim-muted">
+          <p className="text-xs text-muted">
             Select a process to inspect its runtime attributes.
           </p>
         </div>
@@ -797,9 +795,9 @@ function ProcessInspector() {
       : 0;
 
   return (
-    <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden h-full">
-      <div className="px-3 py-2 border-b border-sim-border bg-sim-bg-deep flex items-center justify-between">
-        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider flex items-center gap-1.5">
+    <div className="rounded-md border border-border bg-surface overflow-hidden h-full">
+      <div className="px-3 py-2 border-b border-border bg-surface-alt flex items-center justify-between">
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
           <Activity
             size={13}
             className="text-accent"
@@ -810,7 +808,7 @@ function ProcessInspector() {
 
         <button
           onClick={() => selectProcess(null)}
-          className="text-sim-muted hover:text-sim-text transition-colors"
+          className="text-muted hover:text-foreground transition-colors"
           aria-label="Close process inspector"
         >
           <X size={14} />
@@ -820,7 +818,7 @@ function ProcessInspector() {
       <div className="p-4 space-y-4 text-xs">
         {/* Progress */}
         <div>
-          <div className="flex justify-between text-sim-muted mb-1">
+          <div className="flex justify-between text-muted mb-1">
             <span>Execution Progress</span>
 
             <span className="font-mono">
@@ -829,7 +827,7 @@ function ProcessInspector() {
             </span>
           </div>
 
-          <div className="h-2 rounded-full bg-sim-bg-deep border border-sim-border overflow-hidden">
+          <div className="h-2 rounded-full bg-surface-alt border border-border overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300"
               style={{
@@ -843,38 +841,38 @@ function ProcessInspector() {
 
         {/* PCB Runtime Attributes */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-2 rounded bg-sim-bg-deep border border-sim-border">
-            <span className="text-[10px] text-sim-muted uppercase">
+          <div className="p-2 rounded bg-surface-alt border border-border">
+            <span className="text-[10px] text-muted uppercase">
               Arrival Time
             </span>
 
-            <p className="text-sm font-mono font-bold text-sim-text">
+            <p className="text-sm font-mono font-bold text-foreground">
               {proc.arrivalTime}
             </p>
           </div>
 
-          <div className="p-2 rounded bg-sim-bg-deep border border-sim-border">
-            <span className="text-[10px] text-sim-muted uppercase">
+          <div className="p-2 rounded bg-surface-alt border border-border">
+            <span className="text-[10px] text-muted uppercase">
               Burst Time
             </span>
 
-            <p className="text-sm font-mono font-bold text-sim-text">
+            <p className="text-sm font-mono font-bold text-foreground">
               {proc.burstTime}
             </p>
           </div>
 
-          <div className="p-2 rounded bg-sim-bg-deep border border-sim-border">
-            <span className="text-[10px] text-sim-muted uppercase">
+          <div className="p-2 rounded bg-surface-alt border border-border">
+            <span className="text-[10px] text-muted uppercase">
               Priority
             </span>
 
-            <p className="text-sm font-mono font-bold text-sim-text">
+            <p className="text-sm font-mono font-bold text-foreground">
               {proc.priority}
             </p>
           </div>
 
-          <div className="p-2 rounded bg-sim-bg-deep border border-sim-border">
-            <span className="text-[10px] text-sim-muted uppercase">
+          <div className="p-2 rounded bg-surface-alt border border-border">
+            <span className="text-[10px] text-muted uppercase">
               Status
             </span>
 
@@ -899,82 +897,263 @@ function GanttChart() {
   const scrollRef =
     useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollLeft =
-        scrollRef.current.scrollWidth;
-    }
-  }, [gantt]);
-
-  const maxTime =
-    gantt.length > 0
-      ? Math.max(...gantt.map((segment) => segment.end))
-      : 0;
+  const followFrameRef =
+    useRef<number | null>(null);
 
   const UNIT = 38;
 
+  const maxTime =
+    gantt.length > 0
+      ? Math.max(
+        ...gantt.map((segment) => segment.end)
+      )
+      : 0;
+
+  /*
+   * Auto-follow hanya dilakukan di dalam container Gantt.
+   * Halaman utama tidak akan ikut bergeser.
+   * Container Gantt hanya bergerak ketika playhead
+   * mendekati batas viewport.
+   */
+  useEffect(() => {
+    const container = scrollRef.current;
+
+    if (!container || gantt.length === 0) {
+      return;
+    }
+
+    if (followFrameRef.current !== null) {
+      cancelAnimationFrame(
+        followFrameRef.current
+      );
+    }
+
+    followFrameRef.current =
+      requestAnimationFrame(() => {
+        const playheadPosition =
+          currentTime * UNIT;
+
+        const viewportWidth =
+          container.clientWidth;
+
+        if (viewportWidth <= 0) {
+          return;
+        }
+
+        const currentScrollLeft =
+          container.scrollLeft;
+
+        const viewportLeft =
+          currentScrollLeft;
+
+        const viewportRight =
+          currentScrollLeft + viewportWidth;
+
+        const safeLeft =
+          viewportLeft + viewportWidth * 0.2;
+
+        const safeRight =
+          viewportRight - viewportWidth * 0.2;
+
+        if (playheadPosition > safeRight) {
+          const targetScroll =
+            playheadPosition -
+            viewportWidth * 0.6;
+
+          container.scrollLeft = Math.max(
+            0,
+            targetScroll
+          );
+        } else if (
+          playheadPosition < safeLeft
+        ) {
+          const targetScroll =
+            playheadPosition -
+            viewportWidth * 0.4;
+
+          container.scrollLeft = Math.max(
+            0,
+            targetScroll
+          );
+        }
+      });
+
+    return () => {
+      if (followFrameRef.current !== null) {
+        cancelAnimationFrame(
+          followFrameRef.current
+        );
+
+        followFrameRef.current = null;
+      }
+    };
+  }, [currentTime, gantt.length]);
+
+  /*
+   * Cleanup ketika component di-unmount.
+   */
+  useEffect(() => {
+    return () => {
+      if (followFrameRef.current !== null) {
+        cancelAnimationFrame(
+          followFrameRef.current
+        );
+      }
+    };
+  }, []);
+
   return (
-    <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden">
-      <div className="px-3 py-2 border-b border-sim-border bg-sim-bg-deep flex items-center justify-between">
-        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider">
+    <div className="rounded-md border border-border bg-surface overflow-hidden">
+      {/* Header */}
+      <div className="px-3 py-2 border-b border-border bg-surface-alt flex items-center justify-between">
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
           Live Gantt Chart
         </span>
 
-        <span className="text-[10px] font-mono text-sim-muted">
+        <span className="text-[10px] font-mono text-muted">
           {gantt.length} segments
         </span>
       </div>
 
       <div className="p-3">
         {gantt.length === 0 ? (
-          <p className="text-xs text-sim-muted text-center py-4">
+          <p className="text-xs text-muted text-center py-4">
             Gantt segments will appear as the simulation runs.
           </p>
         ) : (
           <div
             ref={scrollRef}
-            className="overflow-x-auto pb-2"
+            className="
+              overflow-x-auto
+              overflow-y-hidden
+              overscroll-x-contain
+              pb-2
+            "
           >
             <div
+              className="relative"
               style={{
-                minWidth: maxTime * UNIT + 20,
+                width: `${Math.max(
+                  maxTime * UNIT + 20,
+                  100
+                )}px`,
+                minWidth: `${Math.max(
+                  maxTime * UNIT + 20,
+                  100
+                )}px`,
               }}
             >
               {/* Gantt Blocks */}
               <div className="flex h-10">
                 {gantt.map((segment, index) => {
-                  const width =
-                    (segment.end - segment.start) *
-                    UNIT;
+                  const totalDuration =
+                    segment.end - segment.start;
+
+                  const totalWidth =
+                    totalDuration * UNIT;
+
+                  /*
+                   * Hanya bagian yang sudah dilewati
+                   * simulation clock yang ditampilkan.
+                   */
+                  const visibleEnd = Math.min(
+                    currentTime,
+                    segment.end
+                  );
+
+                  const visibleDuration =
+                    Math.max(
+                      0,
+                      visibleEnd -
+                      segment.start
+                    );
+
+                  const visibleWidth =
+                    visibleDuration * UNIT;
 
                   const isActive =
-                    currentTime >= segment.start &&
-                    currentTime < segment.end;
+                    currentTime >=
+                    segment.start &&
+                    currentTime <
+                    segment.end;
+
+                  const isCompleted =
+                    currentTime >= segment.end;
 
                   return (
                     <div
-                      key={index}
-                      className={`h-full flex items-center justify-center border-r border-sim-bg-deep text-[10px] font-mono font-bold shrink-0 relative ${segment.pid
-                          ? 'text-white'
-                          : 'text-sim-muted bg-sim-bg-deep border-dashed border-sim-border'
-                        }`}
+                      key={`${segment.pid ?? 'idle'}-${segment.start}-${segment.end}-${index}`}
+                      className="relative h-full shrink-0"
                       style={{
-                        width,
-                        backgroundColor: segment.pid
-                          ? getProcessColor(segment.pid)
-                          : undefined,
-                        opacity: isActive ? 1 : 0.8,
+                        width: `${totalWidth}px`,
                       }}
-                      title={
-                        segment.pid
-                          ? `${segment.pid}: ${segment.start}–${segment.end}`
-                          : `IDLE: ${segment.start}–${segment.end}`
-                      }
                     >
-                      {segment.pid || 'IDLE'}
+                      {/* Completed / Active Portion */}
+                      {visibleWidth > 0 && (
+                        <motion.div
+                          initial={false}
+                          animate={{
+                            width: visibleWidth,
+                          }}
+                          transition={{
+                            duration: 0.08,
+                            ease: 'linear',
+                          }}
+                          className={`
+                            absolute
+                            left-0
+                            top-0
+                            h-full
+                            flex
+                            items-center
+                            justify-center
+                            border-r
+                            border-border
+                            text-[10px]
+                            font-mono
+                            font-bold
+                            overflow-hidden
+                            ${segment.pid
+                              ? 'text-white'
+                              : 'text-muted bg-surface-alt border-dashed border-border'
+                            }
+                          `}
+                          style={{
+                            backgroundColor:
+                              segment.pid
+                                ? getProcessColor(
+                                  segment.pid
+                                )
+                                : undefined,
+                            opacity:
+                              isActive ||
+                                isCompleted
+                                ? 1
+                                : 0.8,
+                          }}
+                          title={
+                            segment.pid
+                              ? `${segment.pid}: ${segment.start}–${segment.end}`
+                              : `IDLE: ${segment.start}–${segment.end}`
+                          }
+                        >
+                          {segment.pid || 'IDLE'}
 
-                      {isActive && (
-                        <div className="absolute top-0 right-0 w-0.5 h-full bg-white/90 animate-pulse" />
+                          {/* Active Playhead Edge */}
+                          {isActive && (
+                            <div
+                              className="
+                                absolute
+                                top-0
+                                right-0
+                                w-0.5
+                                h-full
+                                bg-white
+                                opacity-90
+                              "
+                            />
+                          )}
+                        </motion.div>
                       )}
                     </div>
                   );
@@ -982,29 +1161,67 @@ function GanttChart() {
               </div>
 
               {/* Time Scale */}
-              <div className="flex">
-                {gantt.map((segment, index) => {
-                  const width =
-                    (segment.end - segment.start) *
-                    UNIT;
-
-                  return (
+              <div className="relative h-6 mt-1 border-t border-border">
+                {Array.from(
+                  {
+                    length:
+                      Math.max(
+                        0,
+                        Math.floor(maxTime)
+                      ) + 1,
+                  },
+                  (_, time) => (
                     <div
-                      key={index}
-                      className="text-[9px] font-mono text-sim-muted shrink-0 border-r border-sim-border pt-1"
-                      style={{ width }}
+                      key={time}
+                      className="absolute top-0"
+                      style={{
+                        left: `${time * UNIT}px`,
+                        transform:
+                          'translateX(-50%)',
+                      }}
                     >
-                      {segment.start}
-                    </div>
-                  );
-                })}
+                      <div className="h-1.5 w-px bg-border" />
 
-                {gantt.length > 0 && (
-                  <span className="text-[9px] font-mono text-sim-muted pt-1">
-                    {gantt[gantt.length - 1].end}
-                  </span>
+                      <span className="block mt-1 text-[9px] font-mono text-muted whitespace-nowrap">
+                        {time}
+                      </span>
+                    </div>
+                  )
                 )}
               </div>
+
+              {/* Current Time Indicator */}
+              <motion.div
+                className="
+                  absolute
+                  top-0
+                  bottom-6
+                  w-px
+                  bg-accent/80
+                  pointer-events-none
+                  z-20
+                "
+                animate={{
+                  x: currentTime * UNIT,
+                }}
+                transition={{
+                  duration: 0.1,
+                  ease: 'linear',
+                }}
+              >
+                <div
+                  className="
+                    absolute
+                    -top-1
+                    -left-1
+                    w-2
+                    h-2
+                    rounded-full
+                    bg-accent
+                    shadow-sm
+                  "
+                />
+              </motion.div>
             </div>
           </div>
         )}
@@ -1033,42 +1250,42 @@ function EventLog() {
   const getEventColor = (type: string) => {
     switch (type) {
       case 'ARRIVAL':
-        return 'text-blue-400';
+        return 'text-blue-600 dark:text-blue-400';
 
       case 'SCHEDULED':
-        return 'text-green-400';
+        return 'text-green-600 dark:text-green-400';
 
       case 'COMPLETED':
-        return 'text-emerald-300';
+        return 'text-emerald-600 dark:text-emerald-300';
 
       case 'PREEMPTED':
-        return 'text-amber-400';
+        return 'text-amber-600 dark:text-amber-400';
 
       case 'QUANTUM_EXPIRED':
-        return 'text-yellow-400';
+        return 'text-yellow-600 dark:text-yellow-400';
 
       case 'AGING':
-        return 'text-purple-400';
+        return 'text-purple-600 dark:text-purple-400';
 
       case 'BOOST':
         return 'text-accent';
 
       case 'IDLE':
-        return 'text-sim-muted';
+        return 'text-muted';
 
       default:
-        return 'text-sim-muted';
+        return 'text-muted';
     }
   };
 
   return (
-    <div className="rounded-md border border-sim-border bg-sim-surface overflow-hidden">
-      <div className="px-3 py-2 border-b border-sim-border bg-sim-bg-deep flex items-center justify-between">
-        <span className="text-xs font-semibold text-sim-text uppercase tracking-wider">
+    <div className="rounded-md border border-border bg-surface overflow-hidden">
+      <div className="px-3 py-2 border-b border-border bg-surface-alt flex items-center justify-between">
+        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
           Event Timeline
         </span>
 
-        <span className="text-[10px] font-mono text-sim-muted">
+        <span className="text-[10px] font-mono text-muted">
           {events.length} events logged
         </span>
       </div>
@@ -1078,16 +1295,16 @@ function EventLog() {
         className="p-3 max-h-52 overflow-y-auto space-y-1"
       >
         {events.length === 0 ? (
-          <p className="text-xs text-sim-muted text-center py-4">
+          <p className="text-xs text-muted text-center py-4">
             Events will appear as the simulation progresses.
           </p>
         ) : (
           events.map((event, index) => (
             <div
               key={index}
-              className="flex items-start gap-2 text-xs py-0.5 border-b border-sim-border/30 last:border-0"
+              className="flex items-start gap-2 text-xs py-0.5 border-b border-border/40 last:border-0"
             >
-              <span className="font-mono text-sim-muted shrink-0 w-8 text-right">
+              <span className="font-mono text-muted shrink-0 w-8 text-right">
                 T={event.time}
               </span>
 

@@ -143,7 +143,40 @@ export class SimulationEngine {
   }
 
   getGantt(): GanttSegment[] {
-    return [...this.gantt];
+    const segments = [...this.gantt];
+
+    // Show the currently running process progressively.
+    // This allows the Gantt chart to grow with the simulation clock
+    // instead of appearing only after the process completes.
+    if (
+      this.cpuProcess &&
+      this.currentTime > this.ganttSegmentStart
+    ) {
+      const activeSegment: GanttSegment = {
+        pid: this.cpuProcess,
+        start: this.ganttSegmentStart,
+        end: this.currentTime,
+      };
+
+      // Avoid duplicating the same active segment if the last
+      // committed segment already represents this process.
+      const last = segments[segments.length - 1];
+
+      if (
+        last &&
+        last.pid === activeSegment.pid &&
+        last.end === activeSegment.start
+      ) {
+        segments[segments.length - 1] = {
+          ...last,
+          end: activeSegment.end,
+        };
+      } else {
+        segments.push(activeSegment);
+      }
+    }
+
+    return segments;
   }
 
   getEvents(): SimulationEvent[] {
